@@ -76,7 +76,7 @@ export const App = () => {
 
     updateTouchMode();
     const handleTouchStart = () => setIsTouchMode(true);
-    const handlePointerDown = (event: PointerEvent) => {
+    const handlePointerDown = (event: globalThis.PointerEvent) => {
       if (event.pointerType === "touch" || event.pointerType === "pen") {
         setIsTouchMode(true);
       }
