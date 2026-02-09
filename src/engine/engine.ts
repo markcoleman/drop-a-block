@@ -1,9 +1,20 @@
-import { GameState, Piece, RotationDirection, TetrominoType, Vec2 } from "./types";
+import { ArkanoidState, GameState, Piece, RotationDirection, TetrominoType, Vec2 } from "./types";
 
 export const BOARD_WIDTH = 10;
 export const VISIBLE_ROWS = 20;
 export const HIDDEN_ROWS = 2;
 export const BOARD_HEIGHT = VISIBLE_ROWS + HIDDEN_ROWS;
+export const ARKANOID_TRIGGER_LINES = 10;
+
+const ARKANOID_DURATION = 30_000;
+const ARKANOID_LAUNCH_DELAY = 600;
+const ARKANOID_PADDLE_WIDTH = 3.6;
+const ARKANOID_PADDLE_STEP = 0.8;
+const ARKANOID_BALL_SPEED = 0.012;
+const ARKANOID_PADDLE_Y = BOARD_HEIGHT - 1;
+const ARKANOID_TOP_BOUNDARY = BOARD_HEIGHT - VISIBLE_ROWS;
+const ARKANOID_BALL_RADIUS = 0.32;
+const ARKANOID_BALL_START_OFFSET = 0.8;
 
 const TETROMINOES: Record<TetrominoType, Vec2[][]> = {
   I: [
@@ -332,6 +343,27 @@ const SPAWN_POSITION: Vec2 = { x: 3, y: 0 };
 export const createEmptyBoard = () =>
   Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(0));
 
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
+
+const createArkanoidState = (): ArkanoidState => {
+  const paddleWidth = ARKANOID_PADDLE_WIDTH;
+  const paddleX = (BOARD_WIDTH - paddleWidth) / 2;
+  const ball = {
+    x: paddleX + paddleWidth / 2,
+    y: ARKANOID_PADDLE_Y - ARKANOID_BALL_START_OFFSET,
+    vx: ARKANOID_BALL_SPEED * 0.6,
+    vy: -ARKANOID_BALL_SPEED
+  };
+  return {
+    paddleX,
+    paddleWidth,
+    ball,
+    timeLeft: ARKANOID_DURATION,
+    launchDelay: ARKANOID_LAUNCH_DELAY
+  };
+};
+
 const cloneBoard = (board: number[][]) => board.map((row) => [...row]);
 
 const getKickData = (type: TetrominoType, from: number, to: number) => {
@@ -390,12 +422,15 @@ export const createInitialState = (): GameState => {
     score: 0,
     level: 1,
     lines: 0,
+    arkanoidMeter: 0,
     status: "start",
+    mode: "tetris",
     dropInterval: getDropInterval(1),
     fallAccumulator: 0,
     lockDelay: 500,
     lockTimer: 0,
-    lastClear: 0
+    lastClear: 0,
+    arkanoid: createArkanoidState()
   };
 };
 
@@ -474,6 +509,8 @@ const lockPiece = (state: GameState): GameState => {
   const totalLines = state.lines + cleared;
   const level = updateLevel(totalLines);
   const { piece, queue } = spawnPiece(state.queue);
+  const arkanoidMeter = state.arkanoidMeter + cleared;
+  const remainder = arkanoidMeter % ARKANOID_TRIGGER_LINES;
   const nextState: GameState = {
     ...state,
     board,
@@ -486,10 +523,14 @@ const lockPiece = (state: GameState): GameState => {
     score: state.score + scoreLineClear(cleared, state.level),
     fallAccumulator: 0,
     lockTimer: 0,
-    lastClear: cleared
+    lastClear: cleared,
+    arkanoidMeter: remainder
   };
   if (!isValidPosition(nextState.board, nextState.active)) {
     return { ...nextState, status: "over" };
+  }
+  if (cleared > 0 && arkanoidMeter >= ARKANOID_TRIGGER_LINES) {
+    return enterArkanoid(nextState);
   }
   return nextState;
 };
@@ -541,8 +582,73 @@ export const holdPiece = (state: GameState): GameState => {
   };
 };
 
-export const tick = (state: GameState, deltaMs: number): GameState => {
-  if (state.status !== "running") return state;
+const enterArkanoid = (state: GameState): GameState => ({
+  ...state,
+  mode: "arkanoid",
+  arkanoid: createArkanoidState(),
+  fallAccumulator: 0,
+  lockTimer: 0
+});
+
+const exitArkanoid = (state: GameState): GameState => ({
+  ...state,
+  mode: "tetris",
+  fallAccumulator: 0,
+  lockTimer: 0
+});
+
+const hasVisibleBricks = (board: number[][]) => {
+  for (let y = ARKANOID_TOP_BOUNDARY; y < BOARD_HEIGHT; y += 1) {
+    for (let x = 0; x < BOARD_WIDTH; x += 1) {
+      if (board[y][x] > 0) return true;
+    }
+  }
+  return false;
+};
+
+export const movePaddle = (state: GameState, direction: -1 | 1): GameState => {
+  if (state.mode !== "arkanoid") return state;
+  const paddleX = clamp(
+    state.arkanoid.paddleX + direction * ARKANOID_PADDLE_STEP,
+    0,
+    BOARD_WIDTH - state.arkanoid.paddleWidth
+  );
+  const ball =
+    state.arkanoid.launchDelay > 0
+      ? {
+          ...state.arkanoid.ball,
+          x: paddleX + state.arkanoid.paddleWidth / 2,
+          y: ARKANOID_PADDLE_Y - ARKANOID_BALL_START_OFFSET
+        }
+      : state.arkanoid.ball;
+  return {
+    ...state,
+    arkanoid: {
+      ...state.arkanoid,
+      paddleX,
+      ball
+    }
+  };
+};
+
+export const launchBall = (state: GameState): GameState => {
+  if (state.mode !== "arkanoid") return state;
+  if (state.arkanoid.launchDelay <= 0) return state;
+  return {
+    ...state,
+    arkanoid: {
+      ...state.arkanoid,
+      launchDelay: 0,
+      ball: {
+        ...state.arkanoid.ball,
+        x: state.arkanoid.paddleX + state.arkanoid.paddleWidth / 2,
+        y: ARKANOID_PADDLE_Y - ARKANOID_BALL_START_OFFSET
+      }
+    }
+  };
+};
+
+const tickTetris = (state: GameState, deltaMs: number): GameState => {
   let next: GameState = { ...state, fallAccumulator: state.fallAccumulator + deltaMs };
   while (next.fallAccumulator >= next.dropInterval) {
     const moved = movePiece(next, { x: 0, y: 1 });
@@ -560,6 +666,129 @@ export const tick = (state: GameState, deltaMs: number): GameState => {
     next = { ...next, lockTimer };
   }
   return next;
+};
+
+const tickArkanoid = (state: GameState, deltaMs: number): GameState => {
+  let nextArkanoid: ArkanoidState = {
+    ...state.arkanoid,
+    timeLeft: Math.max(0, state.arkanoid.timeLeft - deltaMs)
+  };
+  let score = state.score;
+
+  if (nextArkanoid.timeLeft <= 0) {
+    return exitArkanoid({ ...state, arkanoid: nextArkanoid });
+  }
+
+  if (nextArkanoid.launchDelay > 0) {
+    const launchDelay = Math.max(0, nextArkanoid.launchDelay - deltaMs);
+    const ball =
+      launchDelay > 0
+        ? {
+            ...nextArkanoid.ball,
+            x: nextArkanoid.paddleX + nextArkanoid.paddleWidth / 2,
+            y: ARKANOID_PADDLE_Y - ARKANOID_BALL_START_OFFSET
+          }
+        : nextArkanoid.ball;
+    nextArkanoid = { ...nextArkanoid, launchDelay, ball };
+    return { ...state, arkanoid: nextArkanoid };
+  }
+
+  let board = state.board;
+  let { x, y, vx, vy } = nextArkanoid.ball;
+  const dx = vx * deltaMs;
+  const dy = vy * deltaMs;
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 0.25));
+  const stepX = dx / steps;
+  const stepY = dy / steps;
+  let lostBall = false;
+  let hitBrick = false;
+  for (let step = 0; step < steps; step += 1) {
+    const prevX = x;
+    const prevY = y;
+    x += stepX;
+    y += stepY;
+
+    if (x - ARKANOID_BALL_RADIUS < 0) {
+      x = ARKANOID_BALL_RADIUS;
+      vx = Math.abs(vx);
+    }
+    if (x + ARKANOID_BALL_RADIUS > BOARD_WIDTH) {
+      x = BOARD_WIDTH - ARKANOID_BALL_RADIUS;
+      vx = -Math.abs(vx);
+    }
+    if (y - ARKANOID_BALL_RADIUS < ARKANOID_TOP_BOUNDARY) {
+      y = ARKANOID_TOP_BOUNDARY + ARKANOID_BALL_RADIUS;
+      vy = Math.abs(vy);
+    }
+
+    const paddleTop = ARKANOID_PADDLE_Y - 0.2;
+    if (vy > 0 && prevY <= paddleTop && y >= paddleTop) {
+      if (x >= nextArkanoid.paddleX && x <= nextArkanoid.paddleX + nextArkanoid.paddleWidth) {
+        y = paddleTop;
+        const offset =
+          (x - (nextArkanoid.paddleX + nextArkanoid.paddleWidth / 2)) /
+          (nextArkanoid.paddleWidth / 2);
+        const clampedOffset = clamp(offset, -1, 1);
+        const speed = Math.hypot(vx, vy) || ARKANOID_BALL_SPEED;
+        vx = clampedOffset * speed;
+        vy = -Math.sqrt(Math.max(speed * speed - vx * vx, 0.0001));
+      }
+    }
+
+    if (y > ARKANOID_PADDLE_Y + 1) {
+      lostBall = true;
+      break;
+    }
+
+    const cellX = Math.floor(x);
+    const cellY = Math.floor(y);
+    if (
+      cellY >= ARKANOID_TOP_BOUNDARY &&
+      cellY < BOARD_HEIGHT &&
+      cellX >= 0 &&
+      cellX < BOARD_WIDTH &&
+      board[cellY][cellX] > 0
+    ) {
+      if (!hitBrick) {
+        board = board.map((row) => [...row]);
+        hitBrick = true;
+      }
+      board[cellY][cellX] = 0;
+      score += 10;
+      const hitVertical = Math.floor(prevY) !== cellY;
+      const hitHorizontal = Math.floor(prevX) !== cellX;
+      if (hitVertical && !hitHorizontal) {
+        vy = -vy;
+      } else if (hitHorizontal && !hitVertical) {
+        vx = -vx;
+      } else {
+        vy = -vy;
+        vx = -vx;
+      }
+    }
+  }
+
+  nextArkanoid = {
+    ...nextArkanoid,
+    ball: { x, y, vx, vy }
+  };
+
+  const nextState = { ...state, board, arkanoid: nextArkanoid, score };
+  if (lostBall) {
+    return exitArkanoid(nextState);
+  }
+
+  if (!hasVisibleBricks(board)) {
+    return exitArkanoid({ ...nextState, score: nextState.score + 150 });
+  }
+
+  return nextState;
+};
+
+export const tick = (state: GameState, deltaMs: number): GameState => {
+  if (state.status !== "running") return state;
+  if (state.mode === "arkanoid") return tickArkanoid(state, deltaMs);
+  return tickTetris(state, deltaMs);
 };
 
 export const getGhost = (state: GameState): Piece => {

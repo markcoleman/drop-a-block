@@ -1,7 +1,9 @@
 import {
   hardDrop,
   holdPiece,
+  launchBall,
   movePiece,
+  movePaddle,
   pauseGame,
   rotatePiece,
   softDrop,
@@ -33,6 +35,22 @@ export const applyAction = (state: GameState, action: Action): GameState => {
   }
 
   if (state.status !== "running") return state;
+
+  if (state.mode === "arkanoid") {
+    switch (action) {
+      case "left":
+        return movePaddle(state, -1);
+      case "right":
+        return movePaddle(state, 1);
+      case "down":
+      case "rotateCw":
+      case "rotateCcw":
+      case "hardDrop":
+        return launchBall(state);
+      default:
+        return state;
+    }
+  }
 
   switch (action) {
     case "left":

@@ -38,6 +38,7 @@ export const GameCanvas = ({ state }: { state: GameState }) => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const size = canvas.width / BOARD_WIDTH;
+    const isArkanoid = state.mode === "arkanoid";
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "rgba(10, 12, 20, 0.9)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -65,31 +66,60 @@ export const GameCanvas = ({ state }: { state: GameState }) => {
       }
     }
 
-    const ghost = getGhost(state);
-    getBlocks(ghost).forEach((block) => {
-      if (block.y >= BOARD_HEIGHT - VISIBLE_ROWS) {
-        drawCell(
-          ctx,
-          block.x * size,
-          (block.y - (BOARD_HEIGHT - VISIBLE_ROWS)) * size,
-          size,
-          COLOR_ARRAY[TETROMINO_INDEX[ghost.type]],
-          0.25
-        );
-      }
-    });
+    if (!isArkanoid) {
+      const ghost = getGhost(state);
+      getBlocks(ghost).forEach((block) => {
+        if (block.y >= BOARD_HEIGHT - VISIBLE_ROWS) {
+          drawCell(
+            ctx,
+            block.x * size,
+            (block.y - (BOARD_HEIGHT - VISIBLE_ROWS)) * size,
+            size,
+            COLOR_ARRAY[TETROMINO_INDEX[ghost.type]],
+            0.25
+          );
+        }
+      });
 
-    getBlocks(state.active).forEach((block) => {
-      if (block.y >= BOARD_HEIGHT - VISIBLE_ROWS) {
-        drawCell(
-          ctx,
-          block.x * size,
-          (block.y - (BOARD_HEIGHT - VISIBLE_ROWS)) * size,
-          size,
-          COLOR_ARRAY[TETROMINO_INDEX[state.active.type]]
-        );
-      }
-    });
+      getBlocks(state.active).forEach((block) => {
+        if (block.y >= BOARD_HEIGHT - VISIBLE_ROWS) {
+          drawCell(
+            ctx,
+            block.x * size,
+            (block.y - (BOARD_HEIGHT - VISIBLE_ROWS)) * size,
+            size,
+            COLOR_ARRAY[TETROMINO_INDEX[state.active.type]]
+          );
+        }
+      });
+    } else {
+      const paddleY = BOARD_HEIGHT - 1;
+      const paddleScreenY = (paddleY - (BOARD_HEIGHT - VISIBLE_ROWS)) * size + size * 0.2;
+      ctx.fillStyle = "#f8fafc";
+      ctx.fillRect(
+        state.arkanoid.paddleX * size,
+        paddleScreenY,
+        state.arkanoid.paddleWidth * size,
+        size * 0.6
+      );
+      ctx.fillStyle = "rgba(15, 23, 42, 0.4)";
+      ctx.fillRect(
+        state.arkanoid.paddleX * size,
+        paddleScreenY + size * 0.4,
+        state.arkanoid.paddleWidth * size,
+        size * 0.2
+      );
+
+      const ball = state.arkanoid.ball;
+      const ballX = ball.x * size;
+      const ballY = (ball.y - (BOARD_HEIGHT - VISIBLE_ROWS)) * size;
+      ctx.beginPath();
+      ctx.fillStyle = "#38bdf8";
+      ctx.arc(ballX, ballY, size * 0.32, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.6)";
+      ctx.stroke();
+    }
   }, [state]);
 
   return (
