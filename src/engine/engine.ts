@@ -11,8 +11,9 @@ const ARKANOID_LAUNCH_DELAY = 600;
 const ARKANOID_PADDLE_WIDTH = 3.6;
 const ARKANOID_PADDLE_STEP = 0.8;
 const ARKANOID_BALL_SPEED = 0.012;
-const ARKANOID_PADDLE_Y = BOARD_HEIGHT - 1;
-const ARKANOID_TOP_BOUNDARY = BOARD_HEIGHT - VISIBLE_ROWS;
+const ARKANOID_VISIBLE_START = BOARD_HEIGHT - VISIBLE_ROWS;
+const ARKANOID_PADDLE_Y = VISIBLE_ROWS - 1;
+const ARKANOID_TOP_BOUNDARY = 0;
 const ARKANOID_BALL_RADIUS = 0.32;
 const ARKANOID_BALL_START_OFFSET = 0.8;
 
@@ -590,6 +591,12 @@ const enterArkanoid = (state: GameState): GameState => ({
   lockTimer: 0
 });
 
+export const forceArkanoid = (state: GameState): GameState => {
+  if (state.status === "over") return state;
+  const base = state.status === "start" ? startGame(state) : state;
+  return enterArkanoid(base);
+};
+
 const exitArkanoid = (state: GameState): GameState => ({
   ...state,
   mode: "tetris",
@@ -598,7 +605,7 @@ const exitArkanoid = (state: GameState): GameState => ({
 });
 
 const hasVisibleBricks = (board: number[][]) => {
-  for (let y = ARKANOID_TOP_BOUNDARY; y < BOARD_HEIGHT; y += 1) {
+  for (let y = ARKANOID_VISIBLE_START; y < BOARD_HEIGHT; y += 1) {
     for (let x = 0; x < BOARD_WIDTH; x += 1) {
       if (board[y][x] > 0) return true;
     }
@@ -740,10 +747,10 @@ const tickArkanoid = (state: GameState, deltaMs: number): GameState => {
       break;
     }
 
-    const cellX = Math.floor(x);
-    const cellY = Math.floor(y);
+    const cellX = BOARD_WIDTH - 1 - Math.floor(x);
+    const cellY = ARKANOID_VISIBLE_START + (VISIBLE_ROWS - 1 - Math.floor(y));
     if (
-      cellY >= ARKANOID_TOP_BOUNDARY &&
+      cellY >= ARKANOID_VISIBLE_START &&
       cellY < BOARD_HEIGHT &&
       cellX >= 0 &&
       cellX < BOARD_WIDTH &&
@@ -755,8 +762,11 @@ const tickArkanoid = (state: GameState, deltaMs: number): GameState => {
       }
       board[cellY][cellX] = 0;
       score += 10;
-      const hitVertical = Math.floor(prevY) !== cellY;
-      const hitHorizontal = Math.floor(prevX) !== cellX;
+      const prevCellX = BOARD_WIDTH - 1 - Math.floor(prevX);
+      const prevCellY =
+        ARKANOID_VISIBLE_START + (VISIBLE_ROWS - 1 - Math.floor(prevY));
+      const hitVertical = prevCellY !== cellY;
+      const hitHorizontal = prevCellX !== cellX;
       if (hitVertical && !hitHorizontal) {
         vy = -vy;
       } else if (hitHorizontal && !hitVertical) {

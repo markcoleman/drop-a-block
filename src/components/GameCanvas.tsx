@@ -39,26 +39,32 @@ export const GameCanvas = ({ state }: { state: GameState }) => {
     if (!ctx) return;
     const size = canvas.width / BOARD_WIDTH;
     const isArkanoid = state.mode === "arkanoid";
+    const visibleStart = BOARD_HEIGHT - VISIBLE_ROWS;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "rgba(10, 12, 20, 0.9)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    for (let y = BOARD_HEIGHT - VISIBLE_ROWS; y < BOARD_HEIGHT; y += 1) {
+    for (let y = visibleStart; y < BOARD_HEIGHT; y += 1) {
       for (let x = 0; x < BOARD_WIDTH; x += 1) {
         const value = state.board[y][x];
+        const localY = y - visibleStart;
+        const drawX = isArkanoid ? (BOARD_WIDTH - 1 - x) * size : x * size;
+        const drawY = isArkanoid
+          ? (VISIBLE_ROWS - 1 - localY) * size
+          : localY * size;
         if (value > 0) {
           drawCell(
             ctx,
-            x * size,
-            (y - (BOARD_HEIGHT - VISIBLE_ROWS)) * size,
+            drawX,
+            drawY,
             size,
             COLOR_ARRAY[value]
           );
         } else {
           ctx.strokeStyle = "rgba(255,255,255,0.04)";
           ctx.strokeRect(
-            x * size,
-            (y - (BOARD_HEIGHT - VISIBLE_ROWS)) * size,
+            drawX,
+            drawY,
             size,
             size
           );
@@ -93,8 +99,8 @@ export const GameCanvas = ({ state }: { state: GameState }) => {
         }
       });
     } else {
-      const paddleY = BOARD_HEIGHT - 1;
-      const paddleScreenY = (paddleY - (BOARD_HEIGHT - VISIBLE_ROWS)) * size + size * 0.2;
+      const paddleY = VISIBLE_ROWS - 1;
+      const paddleScreenY = paddleY * size + size * 0.2;
       ctx.fillStyle = "#f8fafc";
       ctx.fillRect(
         state.arkanoid.paddleX * size,
@@ -112,7 +118,7 @@ export const GameCanvas = ({ state }: { state: GameState }) => {
 
       const ball = state.arkanoid.ball;
       const ballX = ball.x * size;
-      const ballY = (ball.y - (BOARD_HEIGHT - VISIBLE_ROWS)) * size;
+      const ballY = ball.y * size;
       ctx.beginPath();
       ctx.fillStyle = "#38bdf8";
       ctx.arc(ballX, ballY, size * 0.32, 0, Math.PI * 2);
