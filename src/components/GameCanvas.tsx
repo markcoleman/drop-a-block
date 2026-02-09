@@ -5,20 +5,13 @@ import {
   COLORS,
   getBlocks,
   getGhost,
+  TETROMINO_INDEX,
+  TETROMINO_ORDER,
   VISIBLE_ROWS
 } from "../engine/engine";
 import { GameState } from "../engine/types";
 
-const COLOR_ARRAY = [
-  "transparent",
-  COLORS.I,
-  COLORS.O,
-  COLORS.T,
-  COLORS.S,
-  COLORS.Z,
-  COLORS.J,
-  COLORS.L
-];
+const COLOR_ARRAY = ["transparent", ...TETROMINO_ORDER.map((type) => COLORS[type])];
 
 const drawCell = (
   ctx: CanvasRenderingContext2D,
@@ -110,13 +103,3 @@ export const GameCanvas = ({ state }: { state: GameState }) => {
     />
   );
 };
-
-const TETROMINO_INDEX = {
-  I: 1,
-  O: 2,
-  T: 3,
-  S: 4,
-  Z: 5,
-  J: 6,
-  L: 7
-} as const;

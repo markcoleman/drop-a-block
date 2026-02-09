@@ -5,9 +5,13 @@ import {
   getDropInterval,
   getGhost,
   hardDrop,
+  pauseGame,
+  resetGame,
   holdPiece,
   isValidPosition,
   movePiece,
+  softDrop,
+  startGame,
   rotatePiece,
   tick,
   BOARD_HEIGHT,
@@ -197,6 +201,65 @@ describe("engine", () => {
     });
     const next = tick(state, 10);
     expect(next.active.position.y).toBe(1);
+  });
+
+  it("applies soft drop with a score bonus", () => {
+    const state = makeState({
+      board: createEmptyBoard(),
+      active: {
+        type: "I",
+        rotation: 1,
+        position: { x: 4, y: 0 }
+      }
+    });
+    const dropped = softDrop(state);
+    expect(dropped.active.position.y).toBe(1);
+    expect(dropped.score).toBe(state.score + 1);
+  });
+
+  it("toggles pause and resumes correctly", () => {
+    const state = makeState({});
+    const paused = pauseGame(state);
+    expect(paused.status).toBe("paused");
+    const resumed = pauseGame(paused);
+    expect(resumed.status).toBe("running");
+  });
+
+  it("starts the game from the initial state", () => {
+    const state = createInitialState();
+    const started = startGame(state);
+    expect(started.status).toBe("running");
+    expect(started.fallAccumulator).toBe(0);
+    expect(started.lockTimer).toBe(0);
+  });
+
+  it("returns default state on reset", () => {
+    const state = resetGame();
+    expect(state.status).toBe("start");
+    expect(state.board.length).toBe(BOARD_HEIGHT);
+  });
+
+  it("prevents hold swap if the spawned piece would be invalid", () => {
+    const board = createEmptyBoard();
+    board[0][3] = 1;
+    board[0][4] = 1;
+    const state = makeState({
+      board,
+      active: {
+        type: "I",
+        rotation: 0,
+        position: { x: 4, y: 0 }
+      },
+      hold: "O",
+      canHold: true
+    });
+    const swapped = holdPiece(state);
+    expect(swapped).toBe(state);
+  });
+
+  it("slows drop interval but never below 100ms", () => {
+    expect(getDropInterval(1)).toBe(1000);
+    expect(getDropInterval(20)).toBe(100);
   });
 
   it("resets hold availability after a hard drop locks", () => {
