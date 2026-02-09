@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import clsx from "clsx";
 import {
   BOARD_HEIGHT,
   BOARD_WIDTH,
@@ -14,9 +15,21 @@ import { loadScores, loadSettings, saveScore, saveSettings } from "./utils/stora
 import { playClear, playLock, playMove, playRotate } from "./utils/sound";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { CloseIcon, HelpIcon, PlayIcon, SettingsIcon, TrophyIcon } from "./components/Icons";
-import { Action } from "./game/actions";
+import { Action, canApplyAction } from "./game/actions";
 import { getActionForKey, isRepeatableAction, RepeatableAction } from "./game/controls";
 import { useGame } from "./game/useGame";
+
+const ACTION_EFFECTS: Partial<
+  Record<Action, { sound?: () => void; haptics?: boolean }>
+> = {
+  left: { sound: playMove },
+  right: { sound: playMove },
+  down: { sound: playMove },
+  rotateCw: { sound: playRotate },
+  rotateCcw: { sound: playRotate },
+  hardDrop: { sound: playLock, haptics: true },
+  hold: { sound: playRotate }
+};
 
 export const App = () => {
   const { state, stateRef, applyState, dispatch } = useGame();
@@ -27,6 +40,7 @@ export const App = () => {
   const [menuView, setMenuView] = useState<"none" | "settings" | "help" | "about" | "scores">("none");
   const [clearFlash, setClearFlash] = useState(false);
   const [isTouchMode, setIsTouchMode] = useState(false);
+  type TimerKey = RepeatableAction | `${RepeatableAction}Interval`;
   const inputTimers = useRef<{
     left?: number;
     right?: number;
@@ -98,72 +112,60 @@ export const App = () => {
     };
   }, [state.lastClear]);
 
-  const haptics = () => {
+  const haptics = useCallback(() => {
     if (navigator.vibrate) navigator.vibrate(10);
-  };
+  }, []);
 
-  const handleAction = (action: Action) => {
+  const handleAction = useCallback((action: Action) => {
     const current = stateRef.current;
-    if (current.status === "start" && action !== "pause") {
-      dispatch(action);
-      return;
-    }
-    if (action === "pause") {
-      dispatch(action);
-      return;
-    }
+    if (!canApplyAction(current, action)) return;
+    dispatch(action);
     if (current.status !== "running") return;
-    if (action === "left") {
-      dispatch(action);
-      if (settings.sound) playMove();
-    }
-    if (action === "right") {
-      dispatch(action);
-      if (settings.sound) playMove();
-    }
-    if (action === "down") {
-      dispatch(action);
-      if (settings.sound) playMove();
-    }
-    if (action === "rotateCw") {
-      dispatch(action);
-      if (settings.sound) playRotate();
-    }
-    if (action === "rotateCcw") {
-      dispatch(action);
-      if (settings.sound) playRotate();
-    }
-    if (action === "hardDrop") {
-      dispatch(action);
-      if (settings.sound) playLock();
-      haptics();
-    }
-    if (action === "hold") {
-      dispatch(action);
-      if (settings.sound) playRotate();
-    }
-  };
+    const effect = ACTION_EFFECTS[action];
+    if (effect?.sound && settings.sound) effect.sound();
+    if (effect?.haptics) haptics();
+  }, [dispatch, haptics, settings.sound, stateRef]);
 
-  const startRepeat = (direction: RepeatableAction) => {
+  const clearTimer = useCallback((key: TimerKey) => {
+    const timerId = inputTimers.current[key];
+    if (!timerId) return;
+    if (key.endsWith("Interval")) {
+      window.clearInterval(timerId);
+    } else {
+      window.clearTimeout(timerId);
+    }
+    inputTimers.current[key] = undefined;
+  }, []);
+
+  const stopRepeat = useCallback(
+    (direction: RepeatableAction) => {
+      clearTimer(direction);
+      clearTimer(`${direction}Interval` as TimerKey);
+    },
+    [clearTimer]
+  );
+
+  const startRepeat = useCallback((direction: RepeatableAction) => {
+    stopRepeat(direction);
     handleAction(direction);
-    const timerKey = direction as RepeatableAction;
     const timeoutId = window.setTimeout(() => {
       const intervalId = window.setInterval(() => {
         handleAction(direction);
       }, settings.arr);
-      inputTimers.current[`${timerKey}Interval` as const] = intervalId;
+      inputTimers.current[`${direction}Interval` as const] = intervalId;
     }, settings.das);
-    inputTimers.current[timerKey] = timeoutId;
-  };
+    inputTimers.current[direction] = timeoutId;
+  }, [handleAction, settings.arr, settings.das, stopRepeat]);
 
-  const stopRepeat = (direction: RepeatableAction) => {
-    const timeoutId = inputTimers.current[direction];
-    if (timeoutId) window.clearTimeout(timeoutId);
-    const intervalId = inputTimers.current[`${direction}Interval` as const];
-    if (intervalId) window.clearInterval(intervalId);
-    inputTimers.current[direction] = undefined;
-    inputTimers.current[`${direction}Interval` as const] = undefined;
-  };
+  useEffect(() => {
+    return () => {
+      (["left", "right", "down"] as const).forEach(stopRepeat);
+    };
+  }, [stopRepeat]);
+
+  useEffect(() => {
+    (["left", "right", "down"] as const).forEach(stopRepeat);
+  }, [settings.arr, settings.das, stopRepeat]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -193,7 +195,7 @@ export const App = () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [settings.das, settings.arr]);
+  }, [handleAction, startRepeat, stopRepeat]);
 
   const nextQueue = useMemo(() => state.queue.slice(0, 3), [state.queue]);
 
@@ -216,11 +218,11 @@ export const App = () => {
   };
 
   return (
-    <div className={`app${isTouchMode ? " touch-enabled" : ""}`}>
+    <div className={clsx("app", { "touch-enabled": isTouchMode })}>
       <main className="layout">
         <section className="game-panel">
           <div className="game-stage">
-            <div className={`board-panel${clearFlash ? " clear-flash" : ""}`}>
+            <div className={clsx("board-panel", { "clear-flash": clearFlash })}>
               <GameCanvas state={state} />
               {state.status === "start" && (
                 <div className="overlay start-overlay">

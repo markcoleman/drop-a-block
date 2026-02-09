@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyAction } from "../actions";
+import { applyAction, canApplyAction } from "../actions";
 import { createInitialState, createEmptyBoard } from "../../engine/engine";
 import { GameState } from "../../engine/types";
 
@@ -21,6 +21,15 @@ describe("game actions", () => {
     const state = createInitialState();
     const paused = applyAction(state, "pause");
     expect(paused.status).toBe("paused");
+  });
+
+  it("allows pause and start actions across statuses", () => {
+    const startState = createInitialState();
+    expect(canApplyAction(startState, "left")).toBe(true);
+    expect(canApplyAction(startState, "pause")).toBe(true);
+    const pausedState: GameState = { ...startState, status: "paused" };
+    expect(canApplyAction(pausedState, "left")).toBe(false);
+    expect(canApplyAction(pausedState, "pause")).toBe(true);
   });
 
   it("ignores move actions when paused", () => {

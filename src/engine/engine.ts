@@ -318,7 +318,14 @@ export const COLORS: Record<TetrominoType, string> = {
   L: "#fb923c"
 };
 
-const TETROMINO_KEYS: TetrominoType[] = ["I", "O", "T", "S", "Z", "J", "L"];
+export const TETROMINO_ORDER: TetrominoType[] = ["I", "O", "T", "S", "Z", "J", "L"];
+export const TETROMINO_INDEX: Record<TetrominoType, number> = TETROMINO_ORDER.reduce(
+  (acc, type, index) => {
+    acc[type] = index + 1;
+    return acc;
+  },
+  {} as Record<TetrominoType, number>
+);
 
 const SPAWN_POSITION: Vec2 = { x: 3, y: 0 };
 
@@ -348,7 +355,7 @@ export const isValidPosition = (board: number[][], piece: Piece) =>
   );
 
 const createBag = () => {
-  const bag = [...TETROMINO_KEYS];
+  const bag = [...TETROMINO_ORDER];
   for (let i = bag.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     [bag[i], bag[j]] = [bag[j], bag[i]];
@@ -438,7 +445,7 @@ export const rotatePiece = (state: GameState, direction: RotationDirection): Gam
 
 const imprint = (board: number[][], piece: Piece) => {
   const next = cloneBoard(board);
-  const value = TETROMINO_KEYS.indexOf(piece.type) + 1;
+  const value = TETROMINO_INDEX[piece.type];
   getBlocks(piece).forEach((block) => {
     if (block.y >= 0 && block.y < BOARD_HEIGHT) {
       next[block.y][block.x] = value;
