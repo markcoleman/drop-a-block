@@ -40,6 +40,8 @@ const defaultGoals: GoalsState = {
   plays: 0
 };
 
+const PLAY_MODES: PlayMode[] = ["marathon", "sprint", "ultra"];
+
 export const loadSettings = (): Settings => {
   const raw = localStorage.getItem(SETTINGS_KEY);
   if (!raw) return defaultSettings;
@@ -84,7 +86,7 @@ export const loadGoalsState = (): GoalsState => {
     const parsed = JSON.parse(raw) as GoalsState;
     if (!Array.isArray(parsed.unlocked)) return defaultGoals;
     const unlockedModes = Array.isArray(parsed.unlockedModes)
-      ? (parsed.unlockedModes.filter((mode) => typeof mode === "string") as PlayMode[])
+      ? parsed.unlockedModes.filter((mode): mode is PlayMode => PLAY_MODES.includes(mode as PlayMode))
       : defaultGoals.unlockedModes;
     const secretModes = Array.isArray(parsed.secretModes)
       ? parsed.secretModes.filter((mode) => typeof mode === "string")
@@ -94,7 +96,7 @@ export const loadGoalsState = (): GoalsState => {
       : defaultGoals.plays;
     const normalizedModes = unlockedModes.includes("marathon")
       ? unlockedModes
-      : ["marathon", ...unlockedModes];
+      : (["marathon", ...unlockedModes] as PlayMode[]);
     return {
       unlocked: parsed.unlocked,
       unlockedModes: normalizedModes,
