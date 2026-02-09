@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   createEmptyBoard,
   createInitialState,
+  getDropInterval,
   hardDrop,
+  holdPiece,
   movePiece,
   rotatePiece,
+  tick,
   BOARD_HEIGHT,
   BOARD_WIDTH
 } from "../engine";
@@ -69,5 +72,64 @@ describe("engine", () => {
     });
     const moved = movePiece(state, { x: -1, y: 0 });
     expect(moved.active.position.x).toBe(0);
+  });
+
+  it("holds the active piece and pulls from the queue", () => {
+    const queue = ["O", "T", "S", "Z", "J", "L", "I"];
+    const state = makeState({
+      board: createEmptyBoard(),
+      active: {
+        type: "I",
+        rotation: 0,
+        position: { x: 4, y: 0 }
+      },
+      hold: null,
+      canHold: true,
+      queue
+    });
+    const held = holdPiece(state);
+    expect(held.hold).toBe("I");
+    expect(held.active.type).toBe("O");
+    expect(held.queue.length).toBe(queue.length - 1);
+    expect(held.canHold).toBe(false);
+  });
+
+  it("swaps with the hold piece when available", () => {
+    const state = makeState({
+      board: createEmptyBoard(),
+      active: {
+        type: "I",
+        rotation: 0,
+        position: { x: 4, y: 0 }
+      },
+      hold: "T",
+      canHold: true
+    });
+    const swapped = holdPiece(state);
+    expect(swapped.active.type).toBe("T");
+    expect(swapped.hold).toBe("I");
+    expect(swapped.canHold).toBe(false);
+  });
+
+  it("locks a piece after the lock delay", () => {
+    const state = makeState({
+      board: createEmptyBoard(),
+      active: {
+        type: "O",
+        rotation: 0,
+        position: { x: 4, y: BOARD_HEIGHT - 2 }
+      },
+      lockDelay: 1,
+      lockTimer: 0
+    });
+    const locked = tick(state, 2);
+    expect(locked.board[BOARD_HEIGHT - 1][5]).toBeGreaterThan(0);
+    expect(locked.board[BOARD_HEIGHT - 1][6]).toBeGreaterThan(0);
+  });
+
+  it("scales drop interval with level and caps at 100ms", () => {
+    expect(getDropInterval(1)).toBe(1000);
+    expect(getDropInterval(10)).toBe(325);
+    expect(getDropInterval(20)).toBe(100);
   });
 });
