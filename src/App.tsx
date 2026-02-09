@@ -12,13 +12,14 @@ import { Controls } from "./components/Controls";
 import { GameCanvas } from "./components/GameCanvas";
 import { MiniGrid } from "./components/MiniGrid";
 import { HighScores } from "./components/HighScores";
-import { loadScores, loadSettings, saveScore, saveSettings } from "./utils/storage";
+import { loadGoalsState, loadScores, loadSettings, saveGoalsState, saveScore, saveSettings } from "./utils/storage";
 import { playClear, playLock, playMove, playRotate } from "./utils/sound";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { CloseIcon, HelpIcon, PlayIcon, SettingsIcon, TrophyIcon } from "./components/Icons";
 import { Action, canApplyAction } from "./game/actions";
 import { getActionForKey, isRepeatableAction, RepeatableAction } from "./game/controls";
 import { useGame } from "./game/useGame";
+import { evaluateGoals, getNextLevelTarget } from "./utils/goals";
 
 const ACTION_EFFECTS: Partial<
   Record<Action, { sound?: () => void; haptics?: boolean }>
@@ -36,6 +37,7 @@ export const App = () => {
   const { state, stateRef, applyState, dispatch } = useGame();
   const [settings, setSettings] = useState(loadSettings);
   const [scores, setScores] = useState(loadScores);
+  const [goalsState, setGoalsState] = useState(loadGoalsState);
   const [initials, setInitials] = useState("");
   const [showScoreEntry, setShowScoreEntry] = useState(false);
   const [menuView, setMenuView] = useState<"none" | "settings" | "help" | "about" | "scores">("none");
@@ -43,6 +45,10 @@ export const App = () => {
   const [isTouchMode, setIsTouchMode] = useState(false);
   const arkanoidSeconds = Math.ceil(state.arkanoid.timeLeft / 1000);
   const linesToFlip = Math.max(0, ARKANOID_TRIGGER_LINES - state.arkanoidMeter);
+  const nextLevelTarget = getNextLevelTarget(state.level);
+  const levelStart = (state.level - 1) * 10;
+  const linesToNextLevel = Math.max(0, nextLevelTarget - state.lines);
+  const levelProgress = Math.min(1, (state.lines - levelStart) / 10);
   type TimerKey = RepeatableAction | `${RepeatableAction}Interval`;
   const inputTimers = useRef<{
     left?: number;
@@ -98,6 +104,20 @@ export const App = () => {
       setShowScoreEntry(true);
     }
   }, [state.status]);
+
+  useEffect(() => {
+    const progress = evaluateGoals(
+      { score: state.score, lines: state.lines, level: state.level },
+      goalsState.unlocked
+    );
+    const newlyUnlocked = progress
+      .filter((item) => item.achieved && !goalsState.unlocked.includes(item.goal.id))
+      .map((item) => item.goal.id);
+    if (newlyUnlocked.length === 0) return;
+    const updated = { unlocked: [...goalsState.unlocked, ...newlyUnlocked] };
+    setGoalsState(updated);
+    saveGoalsState(updated);
+  }, [goalsState.unlocked, state.level, state.lines, state.score]);
 
   useEffect(() => {
     if (!settings.sound) return;
@@ -201,6 +221,21 @@ export const App = () => {
   }, [handleAction, startRepeat, stopRepeat]);
 
   const nextQueue = useMemo(() => state.queue.slice(0, 3), [state.queue]);
+  const goalProgress = useMemo(
+    () =>
+      evaluateGoals(
+        { score: state.score, lines: state.lines, level: state.level },
+        goalsState.unlocked
+      ),
+    [state.score, state.lines, state.level, goalsState.unlocked]
+  );
+  const displayGoals = useMemo(() => {
+    const unlocked = goalProgress.filter((goal) => goal.achieved);
+    const upcoming = goalProgress.filter((goal) => !goal.achieved);
+    const recentUnlocked = unlocked.slice(-1);
+    const nextGoals = upcoming.slice(0, 3);
+    return [...recentUnlocked, ...nextGoals].slice(0, 4);
+  }, [goalProgress]);
 
   const handleStart = () => {
     setMenuView("none");
@@ -344,6 +379,42 @@ export const App = () => {
                     <span className="mode-hint">Break blocks for points.</span>
                   </div>
                 )}
+              </div>
+              <div className="panel goals-panel">
+                <h2>Goals</h2>
+                <div className="goal-progress">
+                  <div className="goal-header">
+                    <span>Next level</span>
+                    <strong>{linesToNextLevel} lines</strong>
+                  </div>
+                  <div className="progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={10} aria-valuenow={state.lines - levelStart}>
+                    <div
+                      className="progress-fill"
+                      style={{ width: `${Math.round(levelProgress * 100)}%` }}
+                    />
+                  </div>
+                  <span className="muted">Level {state.level + 1} unlocks at {nextLevelTarget} lines.</span>
+                </div>
+                <div className="goal-list" aria-live="polite">
+                  {displayGoals.map((item) => (
+                    <div
+                      key={item.goal.id}
+                      className={clsx("goal-card", { completed: item.achieved })}
+                    >
+                      <span className="goal-title">{item.goal.label}</span>
+                      <div className="goal-meta">
+                        <span>{item.achieved ? "Completed" : `${item.value.toLocaleString()} / ${item.goal.target.toLocaleString()}`}</span>
+                        <span>{Math.round(item.progress * 100)}%</span>
+                      </div>
+                      <div className="progress-track">
+                        <div
+                          className="progress-fill"
+                          style={{ width: `${Math.round(item.progress * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="side-panel right">

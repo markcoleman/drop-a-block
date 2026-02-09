@@ -13,14 +13,23 @@ export type HighScore = {
   date: string;
 };
 
+export type GoalsState = {
+  unlocked: string[];
+};
+
 const SETTINGS_KEY = "dropablock:settings";
 const SCORES_KEY = "dropablock:scores";
+const GOALS_KEY = "dropablock:goals";
 
 const defaultSettings: Settings = {
   theme: "dark",
   sound: true,
   das: 150,
   arr: 50
+};
+
+const defaultGoals: GoalsState = {
+  unlocked: []
 };
 
 export const loadSettings = (): Settings => {
@@ -58,4 +67,24 @@ export const saveScore = (entry: HighScore) => {
 
 export const resetScores = () => {
   localStorage.removeItem(SCORES_KEY);
+};
+
+export const loadGoalsState = (): GoalsState => {
+  const raw = localStorage.getItem(GOALS_KEY);
+  if (!raw) return defaultGoals;
+  try {
+    const parsed = JSON.parse(raw) as GoalsState;
+    if (!Array.isArray(parsed.unlocked)) return defaultGoals;
+    return { unlocked: parsed.unlocked };
+  } catch {
+    return defaultGoals;
+  }
+};
+
+export const saveGoalsState = (goals: GoalsState) => {
+  localStorage.setItem(GOALS_KEY, JSON.stringify(goals));
+};
+
+export const resetGoals = () => {
+  localStorage.removeItem(GOALS_KEY);
 };
