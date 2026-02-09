@@ -203,12 +203,14 @@ input:focus-visible {
 }
 
 .board-panel.arkanoid {
-  border-color: rgba(56, 189, 248, 0.6);
-  box-shadow: 0 24px 60px rgba(14, 116, 144, 0.35);
+  border-color: rgba(56, 189, 248, 0.7);
+  box-shadow: 0 24px 60px rgba(14, 116, 144, 0.45);
+  background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.18), transparent 55%),
+    radial-gradient(circle at 50% 100%, rgba(244, 114, 182, 0.12), transparent 55%), #050a16;
 }
 
 .board-panel.arkanoid::after {
-  opacity: 0.35;
+  opacity: 0.7;
   transform: translateY(0);
 }
 
@@ -236,6 +238,33 @@ input:focus-visible {
   opacity: 0;
   transform: translateY(30%);
   pointer-events: none;
+}
+
+.board-panel.arkanoid::before {
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: inset 0 0 40px rgba(56, 189, 248, 0.18);
+}
+
+.board-panel.arkanoid .game-canvas {
+  background: #040810;
+  box-shadow: 0 14px 32px rgba(2, 6, 23, 0.6), inset 0 0 0 2px rgba(56, 189, 248, 0.15);
+}
+
+.board-panel.arkanoid::after {
+  background: linear-gradient(
+      180deg,
+      rgba(56, 189, 248, 0.25) 0%,
+      rgba(124, 131, 255, 0.05) 45%,
+      rgba(244, 114, 182, 0.25) 100%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.05),
+      rgba(255, 255, 255, 0.05) 2px,
+      transparent 2px,
+      transparent 5px
+    );
+  opacity: 0.55;
 }
 
 .board-panel.clear-flash::after {
@@ -455,12 +484,104 @@ input:focus-visible {
 
 .stat-grid {
   display: grid;
-  gap: 12px;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 }
 
 .stat-grid strong {
   font-size: 1.4rem;
   font-variant-numeric: tabular-nums;
+}
+
+.stat-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stat-card.compact {
+  padding: 8px 10px;
+  gap: 4px;
+}
+
+.stat-card.compact strong {
+  font-size: 1.1rem;
+}
+
+.goals-merged {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--panel-border);
+}
+
+.goal-progress {
+  display: grid;
+  gap: 8px;
+}
+
+.goal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.goal-header strong {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--panel-border);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+  transition: width 0.3s ease;
+}
+
+.goal-list {
+  display: grid;
+  gap: 8px;
+}
+
+.goal-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.goal-card.completed {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.goal-title {
+  font-weight: 600;
+}
+
+.goal-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 .label {
