@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { PointerEvent } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import clsx from "clsx";
 import {
   ARKANOID_TRIGGER_LINES,
@@ -245,7 +245,7 @@ export const App = () => {
   };
 
   const handleArkanoidPointer = useCallback(
-    (event: PointerEvent<HTMLCanvasElement>) => {
+    (event: ReactPointerEvent<HTMLCanvasElement>) => {
       const current = stateRef.current;
       if (current.mode !== "arkanoid" || current.status !== "running") return;
       if (!event.currentTarget) return;
