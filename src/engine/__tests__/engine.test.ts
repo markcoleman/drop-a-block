@@ -13,7 +13,7 @@ import {
   BOARD_HEIGHT,
   BOARD_WIDTH
 } from "../engine";
-import { GameState } from "../types";
+import { GameState, TetrominoType } from "../types";
 
 const makeState = (overrides: Partial<GameState>): GameState => ({
   ...createInitialState(),
@@ -117,7 +117,7 @@ describe("engine", () => {
   });
 
   it("holds the active piece and pulls from the queue", () => {
-    const queue = ["O", "T", "S", "Z", "J", "L", "I"];
+    const queue: TetrominoType[] = ["O", "T", "S", "Z", "J", "L", "I"];
     const state = makeState({
       board: createEmptyBoard(),
       active: {
