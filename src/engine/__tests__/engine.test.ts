@@ -3,8 +3,10 @@ import {
   createEmptyBoard,
   createInitialState,
   getDropInterval,
+  getGhost,
   hardDrop,
   holdPiece,
+  isValidPosition,
   movePiece,
   rotatePiece,
   tick,
@@ -74,6 +76,46 @@ describe("engine", () => {
     expect(moved.active.position.x).toBe(0);
   });
 
+  it("blocks movement into occupied cells", () => {
+    const board = createEmptyBoard();
+    board[1][2] = 1;
+    const state = makeState({
+      board,
+      active: {
+        type: "L",
+        rotation: 0,
+        position: { x: 3, y: 0 }
+      }
+    });
+    const moved = movePiece(state, { x: -1, y: 0 });
+    expect(moved).toBe(state);
+  });
+
+  it("rejects positions outside the board", () => {
+    const state = makeState({
+      board: createEmptyBoard(),
+      active: {
+        type: "I",
+        rotation: 0,
+        position: { x: -2, y: 0 }
+      }
+    });
+    expect(isValidPosition(state.board, state.active)).toBe(false);
+  });
+
+  it("computes the ghost at the lowest valid position", () => {
+    const state = makeState({
+      board: createEmptyBoard(),
+      active: {
+        type: "O",
+        rotation: 0,
+        position: { x: 4, y: 0 }
+      }
+    });
+    const ghost = getGhost(state);
+    expect(ghost.position.y).toBe(BOARD_HEIGHT - 2);
+  });
+
   it("holds the active piece and pulls from the queue", () => {
     const queue = ["O", "T", "S", "Z", "J", "L", "I"];
     const state = makeState({
@@ -111,6 +153,21 @@ describe("engine", () => {
     expect(swapped.canHold).toBe(false);
   });
 
+  it("ignores hold when already used this turn", () => {
+    const state = makeState({
+      board: createEmptyBoard(),
+      active: {
+        type: "I",
+        rotation: 0,
+        position: { x: 4, y: 0 }
+      },
+      hold: "T",
+      canHold: false
+    });
+    const held = holdPiece(state);
+    expect(held).toBe(state);
+  });
+
   it("locks a piece after the lock delay", () => {
     const state = makeState({
       board: createEmptyBoard(),
@@ -125,6 +182,35 @@ describe("engine", () => {
     const locked = tick(state, 2);
     expect(locked.board[BOARD_HEIGHT - 1][5]).toBeGreaterThan(0);
     expect(locked.board[BOARD_HEIGHT - 1][6]).toBeGreaterThan(0);
+  });
+
+  it("drops a piece after the drop interval elapses", () => {
+    const state = makeState({
+      board: createEmptyBoard(),
+      active: {
+        type: "I",
+        rotation: 1,
+        position: { x: 4, y: 0 }
+      },
+      dropInterval: 10,
+      fallAccumulator: 0
+    });
+    const next = tick(state, 10);
+    expect(next.active.position.y).toBe(1);
+  });
+
+  it("resets hold availability after a hard drop locks", () => {
+    const state = makeState({
+      board: createEmptyBoard(),
+      active: {
+        type: "O",
+        rotation: 0,
+        position: { x: 4, y: 0 }
+      },
+      canHold: false
+    });
+    const dropped = hardDrop(state);
+    expect(dropped.canHold).toBe(true);
   });
 
   it("scales drop interval with level and caps at 100ms", () => {
