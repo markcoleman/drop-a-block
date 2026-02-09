@@ -22,6 +22,7 @@ import { HighScores } from "./components/HighScores";
 import { loadScores, loadSettings, saveScore, saveSettings } from "./utils/storage";
 import { playClear, playLock, playMove, playRotate } from "./utils/sound";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { CloseIcon, HelpIcon, PlayIcon, SettingsIcon, TrophyIcon } from "./components/Icons";
 
 const keyMap = {
   ArrowLeft: "left",
@@ -46,6 +47,8 @@ export const App = () => {
   const [scores, setScores] = useState(loadScores);
   const [initials, setInitials] = useState("");
   const [showScoreEntry, setShowScoreEntry] = useState(false);
+  const [menuView, setMenuView] = useState<"none" | "settings" | "help" | "about" | "scores">("none");
+  const [clearFlash, setClearFlash] = useState(false);
   const stateRef = useRef(state);
   const rafRef = useRef<number>();
   const inputTimers = useRef<{
@@ -94,6 +97,17 @@ export const App = () => {
     if (!settings.sound) return;
     if (state.lastClear > 0) playClear();
   }, [state.lastClear, settings.sound]);
+
+  useEffect(() => {
+    if (state.lastClear <= 0) return;
+    setClearFlash(false);
+    const rafId = window.requestAnimationFrame(() => setClearFlash(true));
+    const timeoutId = window.setTimeout(() => setClearFlash(false), 520);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [state.lastClear]);
 
   const haptics = () => {
     if (navigator.vibrate) navigator.vibrate(10);
@@ -171,10 +185,10 @@ export const App = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat) return;
       const action = keyMap[event.code as keyof typeof keyMap];
       if (!action) return;
       event.preventDefault();
+      if (event.repeat) return;
       if (action === "left" || action === "right" || action === "down") {
         startRepeat(action);
         return;
@@ -185,6 +199,7 @@ export const App = () => {
     const handleKeyUp = (event: KeyboardEvent) => {
       const action = keyMap[event.code as keyof typeof keyMap];
       if (!action) return;
+      event.preventDefault();
       if (action === "left" || action === "right" || action === "down") {
         stopRepeat(action);
       }
@@ -200,10 +215,9 @@ export const App = () => {
 
   const nextQueue = useMemo(() => state.queue.slice(0, 3), [state.queue]);
 
-  const handleRestart = () => {
-    applyState(resetGame);
-    setShowScoreEntry(false);
-    setInitials("");
+  const handleStart = () => {
+    setMenuView("none");
+    applyState(startGame);
   };
 
   const handleScoreSubmit = () => {
@@ -221,75 +235,115 @@ export const App = () => {
 
   return (
     <div className="app">
-      <header className="hero">
-        <div>
-          <p className="eyebrow">Drop-a-Block</p>
-          <h1>Modern Tetris, anywhere.</h1>
-          <p className="subtitle">
-            Mobile-first controls, offline support, and a glassy UI. Canvas rendering keeps the board crisp and fast.
-          </p>
-        </div>
-        <div className="hero-actions">
-          {state.status !== "running" ? (
-            <button className="primary" onClick={() => applyState(startGame)}>
-              {state.status === "paused" ? "Resume" : "Start"}
-            </button>
-          ) : (
-            <button className="primary" onClick={() => applyState(pauseGame)}>
-              Pause
-            </button>
-          )}
-          <button className="secondary" onClick={handleRestart}>
-            Restart
-          </button>
-        </div>
-      </header>
-
       <main className="layout">
         <section className="game-panel">
-          <div className="board-panel">
-            <GameCanvas state={state} />
-            {state.status === "paused" && (
-              <div className="overlay">
-                <h2>Paused</h2>
-                <p>Press P or tap resume.</p>
+          <div className="game-stage">
+            <div className={`board-panel${clearFlash ? " clear-flash" : ""}`}>
+              <GameCanvas state={state} />
+              {state.status === "start" && (
+                <div className="overlay start-overlay">
+                  <div className="start-menu">
+                    <div className="start-menu-header">
+                      <p className="eyebrow">Start Menu</p>
+                      <h2>Ready to drop?</h2>
+                      <p className="subtitle">
+                        Pick a launch point. Tune the feel, review controls, or jump straight in.
+                      </p>
+                    </div>
+                  <div className="start-menu-actions">
+                    <button className="menu-button primary" onClick={handleStart}>
+                      <span className="menu-icon">
+                        <PlayIcon />
+                      </span>
+                        <span className="menu-copy">
+                          <strong>Start Game</strong>
+                        <span className="menu-desc">Drop into level {state.level}.</span>
+                      </span>
+                    </button>
+                    <button className="menu-button" onClick={() => setMenuView("scores")}>
+                      <span className="menu-icon">
+                        <TrophyIcon />
+                      </span>
+                      <span className="menu-copy">
+                        <strong>High Scores</strong>
+                        <span className="menu-desc">Your top runs and rankings.</span>
+                      </span>
+                    </button>
+                    <button className="menu-button" onClick={() => setMenuView("settings")}>
+                      <span className="menu-icon">
+                        <SettingsIcon />
+                      </span>
+                      <span className="menu-copy">
+                        <strong>Adjust Settings</strong>
+                        <span className="menu-desc">Sound, theme, and speed controls.</span>
+                      </span>
+                    </button>
+                    <button className="menu-button" onClick={() => setMenuView("help")}>
+                      <span className="menu-icon">
+                        <HelpIcon />
+                      </span>
+                      <span className="menu-copy">
+                        <strong>Help</strong>
+                        <span className="menu-desc">Controls, tactics, and pro tips.</span>
+                      </span>
+                    </button>
+                    <button className="menu-button" onClick={() => setMenuView("about")}>
+                      <span className="menu-icon">
+                        <HelpIcon />
+                      </span>
+                      <span className="menu-copy">
+                        <strong>About</strong>
+                        <span className="menu-desc">Board size, colors, and rules.</span>
+                      </span>
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
-            {state.status === "over" && (
-              <div className="overlay">
-                <h2>Game Over</h2>
-                <p>Score {state.score.toLocaleString()}</p>
-              </div>
-            )}
-          </div>
-          <div className="stats-panel">
-            <div className="panel">
-              <h2>Stats</h2>
-              <div className="stat-grid">
-                <div>
-                  <span className="label">Score</span>
-                  <strong>{state.score.toLocaleString()}</strong>
+              {state.status === "paused" && (
+                <div className="overlay">
+                  <h2>Paused</h2>
+                  <p>Press P or tap resume.</p>
                 </div>
-                <div>
-                  <span className="label">Level</span>
-                  <strong>{state.level}</strong>
+              )}
+              {state.status === "over" && (
+                <div className="overlay">
+                  <h2>Game Over</h2>
+                  <p>Score {state.score.toLocaleString()}</p>
                 </div>
-                <div>
-                  <span className="label">Lines</span>
-                  <strong>{state.lines}</strong>
+              )}
+            </div>
+            <div className="side-panel left">
+              <div className="panel stats-panel">
+                <h2>Stats</h2>
+                <div className="stat-grid">
+                  <div>
+                    <span className="label">Score</span>
+                    <strong>{state.score.toLocaleString()}</strong>
+                  </div>
+                  <div>
+                    <span className="label">Level</span>
+                    <strong>{state.level}</strong>
+                  </div>
+                  <div>
+                    <span className="label">Lines</span>
+                    <strong>{state.lines}</strong>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="panel">
-              <h2>Hold</h2>
-              <MiniGrid type={state.hold} label="Hold piece" />
-            </div>
-            <div className="panel">
-              <h2>Next</h2>
-              <div className="next-queue">
-                {nextQueue.map((type, index) => (
-                  <MiniGrid key={`${type}-${index}`} type={type} label={`Next piece ${index + 1}`} />
-                ))}
+            <div className="side-panel right">
+              <div className="panel">
+                <h2>Hold</h2>
+                <MiniGrid type={state.hold} label="Hold piece" />
+              </div>
+              <div className="panel">
+                <h2>Next</h2>
+                <div className="next-queue">
+                  {nextQueue.map((type, index) => (
+                    <MiniGrid key={`${type}-${index}`} type={type} label={`Next piece ${index + 1}`} />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -304,22 +358,6 @@ export const App = () => {
             onPause={() => handleAction("pause")}
           />
         </section>
-
-        <aside className="sidebar">
-          <SettingsPanel settings={settings} onChange={setSettings} />
-          <HighScores scores={scores} />
-          <section className="panel" aria-label="Controls">
-            <h2>Controls</h2>
-            <ul className="controls-list">
-              <li>Move: Arrow keys / touch buttons</li>
-              <li>Rotate: Z / X / ↑</li>
-              <li>Hard drop: Space</li>
-              <li>Hold: C / Shift</li>
-              <li>Pause: P / Esc</li>
-            </ul>
-            <p className="muted">Touch uses on-screen buttons. Swipe gestures are not enabled.</p>
-          </section>
-        </aside>
       </main>
 
       {showScoreEntry && (
@@ -341,19 +379,73 @@ export const App = () => {
         </div>
       )}
 
-      <footer className="footer">
-        <p>
-          Board size {BOARD_WIDTH}x{VISIBLE_ROWS} with {BOARD_HEIGHT - VISIBLE_ROWS} hidden spawn rows. Colors are
-          mapped per tetromino.
-        </p>
-        <div className="legend">
-          {Object.entries(COLORS).map(([key, value]) => (
-            <span key={key} style={{ background: value }}>
-              {key}
-            </span>
-          ))}
+      {menuView !== "none" && !showScoreEntry && (
+        <div className="modal" role="dialog" aria-modal="true">
+          <div className="modal-card modal-large">
+            <div className="modal-header">
+              <h2>
+                {menuView === "settings"
+                  ? "Adjust Settings"
+                  : menuView === "help"
+                    ? "Help"
+                    : menuView === "scores"
+                      ? "High Scores"
+                      : "About"}
+              </h2>
+              <button
+                className="icon-button"
+                onClick={() => setMenuView("none")}
+                aria-label="Close"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+            {menuView === "settings" ? (
+              <SettingsPanel
+                settings={settings}
+                onChange={setSettings}
+                className="embedded"
+              />
+            ) : menuView === "help" ? (
+              <div className="help-panel">
+                <p className="muted">
+                  Tight rotations and fast drops win. Use Hold to save a rescue piece, and watch the next queue.
+                </p>
+                <ul className="help-list">
+                  <li>
+                    <strong>Rotate</strong> with Z / X or the on-screen rotate buttons.
+                  </li>
+                  <li>
+                    <strong>Hard drop</strong> with Space or the down arrow.
+                  </li>
+                  <li>
+                    <strong>Hold</strong> with C / Shift to swap the current tetromino.
+                  </li>
+                  <li>
+                    <strong>Pause</strong> anytime with P or Esc.
+                  </li>
+                </ul>
+              </div>
+            ) : menuView === "scores" ? (
+              <HighScores scores={scores} className="embedded" />
+            ) : (
+              <div className="help-panel">
+                <p className="muted about-copy">
+                  Board size {BOARD_WIDTH}x{VISIBLE_ROWS} with {BOARD_HEIGHT - VISIBLE_ROWS} hidden spawn rows.
+                  Colors are mapped per tetromino.
+                </p>
+                <div className="legend about-legend">
+                  {Object.entries(COLORS).map(([key, value]) => (
+                    <span key={key} style={{ background: value }}>
+                      {key}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </footer>
+      )}
     </div>
   );
 };

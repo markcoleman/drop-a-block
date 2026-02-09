@@ -1,8 +1,14 @@
 import { HighScore } from "../utils/storage";
 
-export const HighScores = ({ scores }: { scores: HighScore[] }) => {
+type Props = {
+  scores: HighScore[];
+  className?: string;
+};
+
+export const HighScores = ({ scores, className }: Props) => {
+  const panelClass = ["panel", "high-scores", className].filter(Boolean).join(" ");
   return (
-    <section className="panel" aria-label="High scores">
+    <section className={panelClass} aria-label="High scores">
       <h2>High Scores</h2>
       <ol className="scores-list">
         {scores.length === 0 && <li>No scores yet.</li>}
