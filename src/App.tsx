@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PointerEvent } from "react";
 import clsx from "clsx";
 import {
   ARKANOID_TRIGGER_LINES,
   BOARD_HEIGHT,
   BOARD_WIDTH,
   COLORS,
+  setPaddlePosition,
   startGame,
   VISIBLE_ROWS
 } from "./engine/engine";
@@ -242,6 +244,20 @@ export const App = () => {
     applyState(startGame);
   };
 
+  const handleArkanoidPointer = useCallback(
+    (event: PointerEvent<HTMLCanvasElement>) => {
+      const current = stateRef.current;
+      if (current.mode !== "arkanoid" || current.status !== "running") return;
+      if (!event.currentTarget) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / rect.width) * BOARD_WIDTH;
+      applyState((prev) => setPaddlePosition(prev, x));
+    },
+    [applyState, stateRef]
+  );
+
+  const arkanoidTouchEnabled = isTouchMode && state.mode === "arkanoid" && state.status === "running";
+
   const handleScoreSubmit = () => {
     const name = initials.trim().slice(0, 3).toUpperCase() || "AAA";
     const updated = saveScore({
@@ -266,7 +282,11 @@ export const App = () => {
                 arkanoid: state.mode === "arkanoid"
               })}
             >
-              <GameCanvas state={state} />
+              <GameCanvas
+                state={state}
+                onPointerDown={arkanoidTouchEnabled ? handleArkanoidPointer : undefined}
+                onPointerMove={arkanoidTouchEnabled ? handleArkanoidPointer : undefined}
+              />
               {state.status === "start" && (
                 <div className="overlay start-overlay">
                   <div className="start-menu">

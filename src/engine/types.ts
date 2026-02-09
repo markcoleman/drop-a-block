@@ -19,10 +19,35 @@ export type ArkanoidBall = {
   vy: number;
 };
 
+export type ArkanoidPowerupType = "skinny" | "wide" | "laser" | "multi";
+
+export type ArkanoidPowerup = {
+  id: number;
+  type: ArkanoidPowerupType;
+  x: number;
+  y: number;
+  vy: number;
+};
+
+export type ArkanoidLaser = {
+  x: number;
+  y: number;
+  vy: number;
+};
+
 export type ArkanoidState = {
   paddleX: number;
   paddleWidth: number;
-  ball: ArkanoidBall;
+  balls: ArkanoidBall[];
+  powerups: ArkanoidPowerup[];
+  lasers: ArkanoidLaser[];
+  powerupTimers: {
+    skinny: number;
+    wide: number;
+    laser: number;
+  };
+  laserCooldown: number;
+  nextPowerupId: number;
   timeLeft: number;
   launchDelay: number;
 };

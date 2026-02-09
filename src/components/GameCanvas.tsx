@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { PointerEvent } from "react";
 import {
   BOARD_HEIGHT,
   BOARD_WIDTH,
@@ -29,8 +30,16 @@ const drawCell = (
   ctx.globalAlpha = 1;
 };
 
-export const GameCanvas = ({ state }: { state: GameState }) => {
+type GameCanvasProps = {
+  state: GameState;
+  onPointerDown?: (event: PointerEvent<HTMLCanvasElement>) => void;
+  onPointerMove?: (event: PointerEvent<HTMLCanvasElement>) => void;
+  onPointerUp?: (event: PointerEvent<HTMLCanvasElement>) => void;
+};
+
+export const GameCanvas = ({ state, onPointerDown, onPointerMove, onPointerUp }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const hasPointerHandlers = Boolean(onPointerDown || onPointerMove || onPointerUp);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -116,17 +125,74 @@ export const GameCanvas = ({ state }: { state: GameState }) => {
         size * 0.2
       );
 
-      const ball = state.arkanoid.ball;
-      const ballX = ball.x * size;
-      const ballY = ball.y * size;
-      ctx.beginPath();
-      ctx.fillStyle = "#38bdf8";
-      ctx.arc(ballX, ballY, size * 0.32, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.6)";
-      ctx.stroke();
+      state.arkanoid.balls.forEach((ball) => {
+        const ballX = ball.x * size;
+        const ballY = ball.y * size;
+        ctx.beginPath();
+        ctx.fillStyle = "#38bdf8";
+        ctx.arc(ballX, ballY, size * 0.32, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.6)";
+        ctx.stroke();
+      });
+
+      state.arkanoid.lasers.forEach((laser) => {
+        ctx.fillStyle = "#f472b6";
+        ctx.fillRect(
+          laser.x * size - size * 0.1,
+          laser.y * size - size * 0.6,
+          size * 0.2,
+          size * 0.8
+        );
+      });
+
+      state.arkanoid.powerups.forEach((powerup) => {
+        const colors: Record<string, string> = {
+          skinny: "#fbbf24",
+          wide: "#4ade80",
+          laser: "#60a5fa",
+          multi: "#fb7185"
+        };
+        ctx.fillStyle = colors[powerup.type] ?? "#e2e8f0";
+        ctx.fillRect(
+          powerup.x * size - size * 0.35,
+          powerup.y * size - size * 0.35,
+          size * 0.7,
+          size * 0.7
+        );
+        ctx.strokeStyle = "rgba(15, 23, 42, 0.7)";
+        ctx.strokeRect(
+          powerup.x * size - size * 0.35,
+          powerup.y * size - size * 0.35,
+          size * 0.7,
+          size * 0.7
+        );
+      });
     }
   }, [state]);
+
+  const handlePointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (!hasPointerHandlers) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    onPointerDown?.(event);
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (!hasPointerHandlers) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId) || event.pointerType !== "mouse") {
+      event.preventDefault();
+      onPointerMove?.(event);
+    }
+  };
+
+  const handlePointerUp = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (!hasPointerHandlers) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    onPointerUp?.(event);
+  };
 
   return (
     <canvas
@@ -136,6 +202,10 @@ export const GameCanvas = ({ state }: { state: GameState }) => {
       className="game-canvas"
       role="img"
       aria-label="Tetris game board"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     />
   );
 };

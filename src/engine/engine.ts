@@ -1,4 +1,13 @@
-import { ArkanoidState, GameState, Piece, RotationDirection, TetrominoType, Vec2 } from "./types";
+import {
+  ArkanoidPowerup,
+  ArkanoidPowerupType,
+  ArkanoidState,
+  GameState,
+  Piece,
+  RotationDirection,
+  TetrominoType,
+  Vec2
+} from "./types";
 
 export const BOARD_WIDTH = 10;
 export const VISIBLE_ROWS = 20;
@@ -9,8 +18,16 @@ export const ARKANOID_TRIGGER_LINES = 10;
 const ARKANOID_DURATION = 30_000;
 const ARKANOID_LAUNCH_DELAY = 600;
 const ARKANOID_PADDLE_WIDTH = 3.6;
+const ARKANOID_PADDLE_WIDTH_WIDE = ARKANOID_PADDLE_WIDTH * 1.6;
+const ARKANOID_PADDLE_WIDTH_SKINNY = ARKANOID_PADDLE_WIDTH * 0.6;
 const ARKANOID_PADDLE_STEP = 0.8;
 const ARKANOID_BALL_SPEED = 0.012;
+const ARKANOID_POWERUP_DROP_CHANCE = 0.22;
+const ARKANOID_POWERUP_SPEED = 0.006;
+const ARKANOID_POWERUP_DURATION = 12_000;
+const ARKANOID_LASER_DURATION = 10_000;
+const ARKANOID_LASER_INTERVAL = 220;
+const ARKANOID_LASER_SPEED = 0.03;
 const ARKANOID_VISIBLE_START = BOARD_HEIGHT - VISIBLE_ROWS;
 const ARKANOID_PADDLE_Y = VISIBLE_ROWS - 1;
 const ARKANOID_TOP_BOUNDARY = 0;
@@ -347,6 +364,8 @@ export const createEmptyBoard = () =>
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
+const ARKANOID_POWERUP_TYPES: ArkanoidPowerupType[] = ["skinny", "laser", "wide", "multi"];
+
 const createArkanoidState = (): ArkanoidState => {
   const paddleWidth = ARKANOID_PADDLE_WIDTH;
   const paddleX = (BOARD_WIDTH - paddleWidth) / 2;
@@ -359,7 +378,16 @@ const createArkanoidState = (): ArkanoidState => {
   return {
     paddleX,
     paddleWidth,
-    ball,
+    balls: [ball],
+    powerups: [],
+    lasers: [],
+    powerupTimers: {
+      skinny: 0,
+      wide: 0,
+      laser: 0
+    },
+    laserCooldown: 0,
+    nextPowerupId: 1,
     timeLeft: ARKANOID_DURATION,
     launchDelay: ARKANOID_LAUNCH_DELAY
   };
@@ -613,6 +641,36 @@ const hasVisibleBricks = (board: number[][]) => {
   return false;
 };
 
+const updatePaddleWidth = (arkanoid: ArkanoidState, paddleWidth: number) => {
+  const clampedX = clamp(arkanoid.paddleX, 0, BOARD_WIDTH - paddleWidth);
+  const balls =
+    arkanoid.launchDelay > 0
+      ? arkanoid.balls.map((ball, index) =>
+          index === 0
+            ? {
+                ...ball,
+                x: clampedX + paddleWidth / 2,
+                y: ARKANOID_PADDLE_Y - ARKANOID_BALL_START_OFFSET
+              }
+            : ball
+        )
+      : arkanoid.balls;
+  return { ...arkanoid, paddleX: clampedX, paddleWidth, balls };
+};
+
+const centerBallOnPaddle = (arkanoid: ArkanoidState) => ({
+  ...arkanoid,
+  balls: arkanoid.balls.map((ball, index) =>
+    index === 0
+      ? {
+          ...ball,
+          x: arkanoid.paddleX + arkanoid.paddleWidth / 2,
+          y: ARKANOID_PADDLE_Y - ARKANOID_BALL_START_OFFSET
+        }
+      : ball
+  )
+});
+
 export const movePaddle = (state: GameState, direction: -1 | 1): GameState => {
   if (state.mode !== "arkanoid") return state;
   const paddleX = clamp(
@@ -620,22 +678,39 @@ export const movePaddle = (state: GameState, direction: -1 | 1): GameState => {
     0,
     BOARD_WIDTH - state.arkanoid.paddleWidth
   );
-  const ball =
-    state.arkanoid.launchDelay > 0
-      ? {
-          ...state.arkanoid.ball,
-          x: paddleX + state.arkanoid.paddleWidth / 2,
-          y: ARKANOID_PADDLE_Y - ARKANOID_BALL_START_OFFSET
-        }
-      : state.arkanoid.ball;
   return {
     ...state,
     arkanoid: {
       ...state.arkanoid,
       paddleX,
-      ball
+      balls:
+        state.arkanoid.launchDelay > 0
+          ? state.arkanoid.balls.map((ball, index) =>
+              index === 0
+                ? {
+                    ...ball,
+                    x: paddleX + state.arkanoid.paddleWidth / 2,
+                    y: ARKANOID_PADDLE_Y - ARKANOID_BALL_START_OFFSET
+                  }
+                : ball
+            )
+          : state.arkanoid.balls
     }
   };
+};
+
+export const setPaddlePosition = (state: GameState, targetX: number): GameState => {
+  if (state.mode !== "arkanoid") return state;
+  const paddleX = clamp(
+    targetX - state.arkanoid.paddleWidth / 2,
+    0,
+    BOARD_WIDTH - state.arkanoid.paddleWidth
+  );
+  const nextArkanoid =
+    state.arkanoid.launchDelay > 0
+      ? centerBallOnPaddle({ ...state.arkanoid, paddleX })
+      : { ...state.arkanoid, paddleX };
+  return { ...state, arkanoid: nextArkanoid };
 };
 
 export const launchBall = (state: GameState): GameState => {
@@ -646,11 +721,15 @@ export const launchBall = (state: GameState): GameState => {
     arkanoid: {
       ...state.arkanoid,
       launchDelay: 0,
-      ball: {
-        ...state.arkanoid.ball,
-        x: state.arkanoid.paddleX + state.arkanoid.paddleWidth / 2,
-        y: ARKANOID_PADDLE_Y - ARKANOID_BALL_START_OFFSET
-      }
+      balls: state.arkanoid.balls.map((ball, index) =>
+        index === 0
+          ? {
+              ...ball,
+              x: state.arkanoid.paddleX + state.arkanoid.paddleWidth / 2,
+              y: ARKANOID_PADDLE_Y - ARKANOID_BALL_START_OFFSET
+            }
+          : ball
+      )
     }
   };
 };
@@ -680,7 +759,40 @@ const tickArkanoid = (state: GameState, deltaMs: number): GameState => {
     ...state.arkanoid,
     timeLeft: Math.max(0, state.arkanoid.timeLeft - deltaMs)
   };
+  let board = state.board;
   let score = state.score;
+  let powerups = [...state.arkanoid.powerups];
+  let lasers = [...state.arkanoid.lasers];
+  let nextPowerupId = state.arkanoid.nextPowerupId;
+  let laserCooldown = state.arkanoid.laserCooldown;
+  let powerupTimers = { ...state.arkanoid.powerupTimers };
+
+  const tickTimer = (value: number) => Math.max(0, value - deltaMs);
+  powerupTimers = {
+    skinny: tickTimer(powerupTimers.skinny),
+    wide: tickTimer(powerupTimers.wide),
+    laser: tickTimer(powerupTimers.laser)
+  };
+
+  let targetWidth = ARKANOID_PADDLE_WIDTH;
+  if (powerupTimers.skinny > 0) {
+    targetWidth = ARKANOID_PADDLE_WIDTH_SKINNY;
+  } else if (powerupTimers.wide > 0) {
+    targetWidth = ARKANOID_PADDLE_WIDTH_WIDE;
+  }
+
+  nextArkanoid = {
+    ...nextArkanoid,
+    powerupTimers,
+    lasers,
+    powerups,
+    laserCooldown,
+    nextPowerupId
+  };
+
+  if (targetWidth !== nextArkanoid.paddleWidth) {
+    nextArkanoid = updatePaddleWidth(nextArkanoid, targetWidth);
+  }
 
   if (nextArkanoid.timeLeft <= 0) {
     return exitArkanoid({ ...state, arkanoid: nextArkanoid });
@@ -688,67 +800,61 @@ const tickArkanoid = (state: GameState, deltaMs: number): GameState => {
 
   if (nextArkanoid.launchDelay > 0) {
     const launchDelay = Math.max(0, nextArkanoid.launchDelay - deltaMs);
-    const ball =
-      launchDelay > 0
-        ? {
-            ...nextArkanoid.ball,
-            x: nextArkanoid.paddleX + nextArkanoid.paddleWidth / 2,
-            y: ARKANOID_PADDLE_Y - ARKANOID_BALL_START_OFFSET
-          }
-        : nextArkanoid.ball;
-    nextArkanoid = { ...nextArkanoid, launchDelay, ball };
+    nextArkanoid = {
+      ...nextArkanoid,
+      launchDelay,
+      balls:
+        launchDelay > 0
+          ? centerBallOnPaddle(nextArkanoid).balls
+          : nextArkanoid.balls
+    };
     return { ...state, arkanoid: nextArkanoid };
   }
 
-  let board = state.board;
-  let { x, y, vx, vy } = nextArkanoid.ball;
-  const dx = vx * deltaMs;
-  const dy = vy * deltaMs;
-  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 0.25));
-  const stepX = dx / steps;
-  const stepY = dy / steps;
-  let lostBall = false;
-  let hitBrick = false;
-  for (let step = 0; step < steps; step += 1) {
-    const prevX = x;
-    const prevY = y;
-    x += stepX;
-    y += stepY;
+  const spawnPowerup = (cellX: number, cellY: number) => {
+    if (Math.random() > ARKANOID_POWERUP_DROP_CHANCE) return;
+    const type =
+      ARKANOID_POWERUP_TYPES[Math.floor(Math.random() * ARKANOID_POWERUP_TYPES.length)];
+    const x = BOARD_WIDTH - 1 - cellX + 0.5;
+    const y = VISIBLE_ROWS - 1 - (cellY - ARKANOID_VISIBLE_START) + 0.5;
+    const powerup: ArkanoidPowerup = {
+      id: nextPowerupId,
+      type,
+      x,
+      y,
+      vy: ARKANOID_POWERUP_SPEED
+    };
+    nextPowerupId += 1;
+    powerups.push(powerup);
+  };
 
-    if (x - ARKANOID_BALL_RADIUS < 0) {
-      x = ARKANOID_BALL_RADIUS;
-      vx = Math.abs(vx);
-    }
-    if (x + ARKANOID_BALL_RADIUS > BOARD_WIDTH) {
-      x = BOARD_WIDTH - ARKANOID_BALL_RADIUS;
-      vx = -Math.abs(vx);
-    }
-    if (y - ARKANOID_BALL_RADIUS < ARKANOID_TOP_BOUNDARY) {
-      y = ARKANOID_TOP_BOUNDARY + ARKANOID_BALL_RADIUS;
-      vy = Math.abs(vy);
-    }
+  const breakBrick = (cellX: number, cellY: number) => {
+    if (board[cellY][cellX] <= 0) return;
+    board = board.map((row) => [...row]);
+    board[cellY][cellX] = 0;
+    score += 10;
+    spawnPowerup(cellX, cellY);
+  };
 
-    const paddleTop = ARKANOID_PADDLE_Y - 0.2;
-    if (vy > 0 && prevY <= paddleTop && y >= paddleTop) {
-      if (x >= nextArkanoid.paddleX && x <= nextArkanoid.paddleX + nextArkanoid.paddleWidth) {
-        y = paddleTop;
-        const offset =
-          (x - (nextArkanoid.paddleX + nextArkanoid.paddleWidth / 2)) /
-          (nextArkanoid.paddleWidth / 2);
-        const clampedOffset = clamp(offset, -1, 1);
-        const speed = Math.hypot(vx, vy) || ARKANOID_BALL_SPEED;
-        vx = clampedOffset * speed;
-        vy = -Math.sqrt(Math.max(speed * speed - vx * vx, 0.0001));
-      }
+  if (powerupTimers.laser > 0) {
+    laserCooldown += deltaMs;
+    while (laserCooldown >= ARKANOID_LASER_INTERVAL) {
+      const leftX = nextArkanoid.paddleX + 0.35;
+      const rightX = nextArkanoid.paddleX + nextArkanoid.paddleWidth - 0.35;
+      lasers.push({ x: leftX, y: ARKANOID_PADDLE_Y - 0.3, vy: ARKANOID_LASER_SPEED });
+      lasers.push({ x: rightX, y: ARKANOID_PADDLE_Y - 0.3, vy: ARKANOID_LASER_SPEED });
+      laserCooldown -= ARKANOID_LASER_INTERVAL;
     }
+  } else {
+    laserCooldown = 0;
+  }
 
-    if (y > ARKANOID_PADDLE_Y + 1) {
-      lostBall = true;
-      break;
-    }
-
-    const cellX = BOARD_WIDTH - 1 - Math.floor(x);
-    const cellY = ARKANOID_VISIBLE_START + (VISIBLE_ROWS - 1 - Math.floor(y));
+  const nextLasers: typeof lasers = [];
+  lasers.forEach((laser) => {
+    const nextY = laser.y - laser.vy * deltaMs;
+    if (nextY < ARKANOID_TOP_BOUNDARY) return;
+    const cellX = BOARD_WIDTH - 1 - Math.floor(laser.x);
+    const cellY = ARKANOID_VISIBLE_START + (VISIBLE_ROWS - 1 - Math.floor(nextY));
     if (
       cellY >= ARKANOID_VISIBLE_START &&
       cellY < BOARD_HEIGHT &&
@@ -756,35 +862,163 @@ const tickArkanoid = (state: GameState, deltaMs: number): GameState => {
       cellX < BOARD_WIDTH &&
       board[cellY][cellX] > 0
     ) {
-      if (!hitBrick) {
-        board = board.map((row) => [...row]);
-        hitBrick = true;
+      breakBrick(cellX, cellY);
+      return;
+    }
+    nextLasers.push({ ...laser, y: nextY });
+  });
+  lasers = nextLasers;
+
+  const nextBalls: typeof nextArkanoid.balls = [];
+  nextArkanoid.balls.forEach((ball) => {
+    let { x, y, vx, vy } = ball;
+    const dx = vx * deltaMs;
+    const dy = vy * deltaMs;
+    const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 0.25));
+    const stepX = dx / steps;
+    const stepY = dy / steps;
+    let lostBall = false;
+    for (let step = 0; step < steps; step += 1) {
+      const prevX = x;
+      const prevY = y;
+      x += stepX;
+      y += stepY;
+
+      if (x - ARKANOID_BALL_RADIUS < 0) {
+        x = ARKANOID_BALL_RADIUS;
+        vx = Math.abs(vx);
       }
-      board[cellY][cellX] = 0;
-      score += 10;
-      const prevCellX = BOARD_WIDTH - 1 - Math.floor(prevX);
-      const prevCellY =
-        ARKANOID_VISIBLE_START + (VISIBLE_ROWS - 1 - Math.floor(prevY));
-      const hitVertical = prevCellY !== cellY;
-      const hitHorizontal = prevCellX !== cellX;
-      if (hitVertical && !hitHorizontal) {
-        vy = -vy;
-      } else if (hitHorizontal && !hitVertical) {
-        vx = -vx;
-      } else {
-        vy = -vy;
-        vx = -vx;
+      if (x + ARKANOID_BALL_RADIUS > BOARD_WIDTH) {
+        x = BOARD_WIDTH - ARKANOID_BALL_RADIUS;
+        vx = -Math.abs(vx);
+      }
+      if (y - ARKANOID_BALL_RADIUS < ARKANOID_TOP_BOUNDARY) {
+        y = ARKANOID_TOP_BOUNDARY + ARKANOID_BALL_RADIUS;
+        vy = Math.abs(vy);
+      }
+
+      const paddleTop = ARKANOID_PADDLE_Y - 0.2;
+      if (vy > 0 && prevY <= paddleTop && y >= paddleTop) {
+        if (x >= nextArkanoid.paddleX && x <= nextArkanoid.paddleX + nextArkanoid.paddleWidth) {
+          y = paddleTop;
+          const offset =
+            (x - (nextArkanoid.paddleX + nextArkanoid.paddleWidth / 2)) /
+            (nextArkanoid.paddleWidth / 2);
+          const clampedOffset = clamp(offset, -1, 1);
+          const speed = Math.hypot(vx, vy) || ARKANOID_BALL_SPEED;
+          vx = clampedOffset * speed;
+          vy = -Math.sqrt(Math.max(speed * speed - vx * vx, 0.0001));
+        }
+      }
+
+      if (y > ARKANOID_PADDLE_Y + 1) {
+        lostBall = true;
+        break;
+      }
+
+      const cellX = BOARD_WIDTH - 1 - Math.floor(x);
+      const cellY = ARKANOID_VISIBLE_START + (VISIBLE_ROWS - 1 - Math.floor(y));
+      if (
+        cellY >= ARKANOID_VISIBLE_START &&
+        cellY < BOARD_HEIGHT &&
+        cellX >= 0 &&
+        cellX < BOARD_WIDTH &&
+        board[cellY][cellX] > 0
+      ) {
+        breakBrick(cellX, cellY);
+        const prevCellX = BOARD_WIDTH - 1 - Math.floor(prevX);
+        const prevCellY =
+          ARKANOID_VISIBLE_START + (VISIBLE_ROWS - 1 - Math.floor(prevY));
+        const hitVertical = prevCellY !== cellY;
+        const hitHorizontal = prevCellX !== cellX;
+        if (hitVertical && !hitHorizontal) {
+          vy = -vy;
+        } else if (hitHorizontal && !hitVertical) {
+          vx = -vx;
+        } else {
+          vy = -vy;
+          vx = -vx;
+        }
       }
     }
-  }
+
+    if (!lostBall) {
+      nextBalls.push({ x, y, vx, vy });
+    }
+  });
 
   nextArkanoid = {
     ...nextArkanoid,
-    ball: { x, y, vx, vy }
+    balls: nextBalls
+  };
+
+  const applyPowerup = (type: ArkanoidPowerupType) => {
+    if (type === "skinny") {
+      powerupTimers = { ...powerupTimers, skinny: ARKANOID_POWERUP_DURATION, wide: 0 };
+      nextArkanoid = updatePaddleWidth(nextArkanoid, ARKANOID_PADDLE_WIDTH_SKINNY);
+      return;
+    }
+    if (type === "wide") {
+      powerupTimers = { ...powerupTimers, wide: ARKANOID_POWERUP_DURATION, skinny: 0 };
+      nextArkanoid = updatePaddleWidth(nextArkanoid, ARKANOID_PADDLE_WIDTH_WIDE);
+      return;
+    }
+    if (type === "laser") {
+      powerupTimers = { ...powerupTimers, laser: ARKANOID_LASER_DURATION };
+      return;
+    }
+    if (type === "multi") {
+      if (nextArkanoid.balls.length >= 4) return;
+      const baseBall = nextArkanoid.balls[0] ?? {
+        x: nextArkanoid.paddleX + nextArkanoid.paddleWidth / 2,
+        y: ARKANOID_PADDLE_Y - ARKANOID_BALL_START_OFFSET,
+        vx: ARKANOID_BALL_SPEED * 0.5,
+        vy: -ARKANOID_BALL_SPEED
+      };
+      const speed = Math.hypot(baseBall.vx, baseBall.vy) || ARKANOID_BALL_SPEED;
+      const spread = speed * 0.65;
+      const vy = -Math.sqrt(Math.max(speed * speed - spread * spread, 0.0001));
+      const spawnX = nextArkanoid.paddleX + nextArkanoid.paddleWidth / 2;
+      const spawnY = ARKANOID_PADDLE_Y - ARKANOID_BALL_START_OFFSET;
+      nextArkanoid = {
+        ...nextArkanoid,
+        balls: [
+          ...nextArkanoid.balls,
+          { x: spawnX, y: spawnY, vx: spread, vy },
+          { x: spawnX, y: spawnY, vx: -spread, vy }
+        ]
+      };
+    }
+  };
+
+  const nextPowerups: ArkanoidPowerup[] = [];
+  powerups.forEach((powerup) => {
+    const nextY = powerup.y + powerup.vy * deltaMs;
+    if (nextY > ARKANOID_PADDLE_Y + 1) return;
+    const paddleTop = ARKANOID_PADDLE_Y - 0.2;
+    if (
+      nextY >= paddleTop &&
+      powerup.x >= nextArkanoid.paddleX &&
+      powerup.x <= nextArkanoid.paddleX + nextArkanoid.paddleWidth
+    ) {
+      applyPowerup(powerup.type);
+      return;
+    }
+    nextPowerups.push({ ...powerup, y: nextY });
+  });
+
+  nextArkanoid = {
+    ...nextArkanoid,
+    balls: nextBalls,
+    powerups: nextPowerups,
+    lasers,
+    powerupTimers,
+    nextPowerupId,
+    laserCooldown
   };
 
   const nextState = { ...state, board, arkanoid: nextArkanoid, score };
-  if (lostBall) {
+  if (nextBalls.length === 0) {
     return exitArkanoid(nextState);
   }
 
