@@ -22,6 +22,7 @@ import { HighScores } from "./components/HighScores";
 import { loadScores, loadSettings, saveScore, saveSettings } from "./utils/storage";
 import { playClear, playLock, playMove, playRotate } from "./utils/sound";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { CloseIcon, HelpIcon, PlayIcon, SettingsIcon } from "./components/Icons";
 
 const keyMap = {
   ArrowLeft: "left",
@@ -46,6 +47,8 @@ export const App = () => {
   const [scores, setScores] = useState(loadScores);
   const [initials, setInitials] = useState("");
   const [showScoreEntry, setShowScoreEntry] = useState(false);
+  const [menuView, setMenuView] = useState<"none" | "settings" | "help">("none");
+  const [clearFlash, setClearFlash] = useState(false);
   const stateRef = useRef(state);
   const rafRef = useRef<number>();
   const inputTimers = useRef<{
@@ -94,6 +97,17 @@ export const App = () => {
     if (!settings.sound) return;
     if (state.lastClear > 0) playClear();
   }, [state.lastClear, settings.sound]);
+
+  useEffect(() => {
+    if (state.lastClear <= 0) return;
+    setClearFlash(false);
+    const rafId = window.requestAnimationFrame(() => setClearFlash(true));
+    const timeoutId = window.setTimeout(() => setClearFlash(false), 520);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [state.lastClear]);
 
   const haptics = () => {
     if (navigator.vibrate) navigator.vibrate(10);
@@ -200,10 +214,9 @@ export const App = () => {
 
   const nextQueue = useMemo(() => state.queue.slice(0, 3), [state.queue]);
 
-  const handleRestart = () => {
-    applyState(resetGame);
-    setShowScoreEntry(false);
-    setInitials("");
+  const handleStart = () => {
+    setMenuView("none");
+    applyState(startGame);
   };
 
   const handleScoreSubmit = () => {
@@ -221,34 +234,53 @@ export const App = () => {
 
   return (
     <div className="app">
-      <header className="hero">
-        <div>
-          <p className="eyebrow">Drop-a-Block</p>
-          <h1>Modern Tetris, anywhere.</h1>
-          <p className="subtitle">
-            Mobile-first controls, offline support, and a glassy UI. Canvas rendering keeps the board crisp and fast.
-          </p>
-        </div>
-        <div className="hero-actions">
-          {state.status !== "running" ? (
-            <button className="primary" onClick={() => applyState(startGame)}>
-              {state.status === "paused" ? "Resume" : "Start"}
-            </button>
-          ) : (
-            <button className="primary" onClick={() => applyState(pauseGame)}>
-              Pause
-            </button>
-          )}
-          <button className="secondary" onClick={handleRestart}>
-            Restart
-          </button>
-        </div>
-      </header>
-
       <main className="layout">
         <section className="game-panel">
-          <div className="board-panel">
+          <div className={`board-panel${clearFlash ? " clear-flash" : ""}`}>
             <GameCanvas state={state} />
+            {state.status === "start" && (
+              <div className="overlay start-overlay">
+                <div className="start-menu">
+                  <div className="start-menu-header">
+                    <p className="eyebrow">Start Menu</p>
+                    <h2>Ready to drop?</h2>
+                    <p className="subtitle">
+                      Pick a launch point. Tune the feel, review controls, or jump straight in.
+                    </p>
+                  </div>
+                  <div className="start-menu-actions">
+                    <button className="menu-button primary" onClick={handleStart}>
+                      <span className="menu-icon">
+                        <PlayIcon />
+                      </span>
+                      <span className="menu-copy">
+                        <strong>Start Game</strong>
+                        <span className="menu-desc">Drop into level {state.level}.</span>
+                      </span>
+                    </button>
+                    <button className="menu-button" onClick={() => setMenuView("settings")}>
+                      <span className="menu-icon">
+                        <SettingsIcon />
+                      </span>
+                      <span className="menu-copy">
+                        <strong>Adjust Settings</strong>
+                        <span className="menu-desc">Sound, theme, and speed controls.</span>
+                      </span>
+                    </button>
+                    <button className="menu-button" onClick={() => setMenuView("help")}>
+                      <span className="menu-icon">
+                        <HelpIcon />
+                      </span>
+                      <span className="menu-copy">
+                        <strong>Help</strong>
+                        <span className="menu-desc">Controls, tactics, and pro tips.</span>
+                      </span>
+                    </button>
+                  </div>
+                  <HighScores scores={scores} className="start-menu-scores" />
+                </div>
+              </div>
+            )}
             {state.status === "paused" && (
               <div className="overlay">
                 <h2>Paused</h2>
@@ -304,22 +336,6 @@ export const App = () => {
             onPause={() => handleAction("pause")}
           />
         </section>
-
-        <aside className="sidebar">
-          <SettingsPanel settings={settings} onChange={setSettings} />
-          <HighScores scores={scores} />
-          <section className="panel" aria-label="Controls">
-            <h2>Controls</h2>
-            <ul className="controls-list">
-              <li>Move: Arrow keys / touch buttons</li>
-              <li>Rotate: Z / X / ↑</li>
-              <li>Hard drop: Space</li>
-              <li>Hold: C / Shift</li>
-              <li>Pause: P / Esc</li>
-            </ul>
-            <p className="muted">Touch uses on-screen buttons. Swipe gestures are not enabled.</p>
-          </section>
-        </aside>
       </main>
 
       {showScoreEntry && (
@@ -337,6 +353,50 @@ export const App = () => {
             <button className="primary" onClick={handleScoreSubmit}>
               Save Score
             </button>
+          </div>
+        </div>
+      )}
+
+      {menuView !== "none" && !showScoreEntry && (
+        <div className="modal" role="dialog" aria-modal="true">
+          <div className="modal-card modal-large">
+            <div className="modal-header">
+              <h2>{menuView === "settings" ? "Adjust Settings" : "Help"}</h2>
+              <button
+                className="icon-button"
+                onClick={() => setMenuView("none")}
+                aria-label="Close"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+            {menuView === "settings" ? (
+              <SettingsPanel
+                settings={settings}
+                onChange={setSettings}
+                className="embedded"
+              />
+            ) : (
+              <div className="help-panel">
+                <p className="muted">
+                  Tight rotations and fast drops win. Use Hold to save a rescue piece, and watch the next queue.
+                </p>
+                <ul className="help-list">
+                  <li>
+                    <strong>Rotate</strong> with Z / X or the on-screen rotate buttons.
+                  </li>
+                  <li>
+                    <strong>Hard drop</strong> with Space or the down arrow.
+                  </li>
+                  <li>
+                    <strong>Hold</strong> with C / Shift to swap the current tetromino.
+                  </li>
+                  <li>
+                    <strong>Pause</strong> anytime with P or Esc.
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       )}

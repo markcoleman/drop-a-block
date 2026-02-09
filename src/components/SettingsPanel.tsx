@@ -3,11 +3,13 @@ import { Settings } from "../utils/storage";
 type Props = {
   settings: Settings;
   onChange: (settings: Settings) => void;
+  className?: string;
 };
 
-export const SettingsPanel = ({ settings, onChange }: Props) => {
+export const SettingsPanel = ({ settings, onChange, className }: Props) => {
+  const panelClass = ["panel", "settings-panel", className].filter(Boolean).join(" ");
   return (
-    <section className="panel" aria-label="Settings">
+    <section className={panelClass} aria-label="Settings">
       <h2>Settings</h2>
       <div className="settings-group">
         <label className="toggle">
