@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import {
+  ARKANOID_TRIGGER_LINES,
   BOARD_HEIGHT,
   BOARD_WIDTH,
   COLORS,
@@ -40,6 +41,8 @@ export const App = () => {
   const [menuView, setMenuView] = useState<"none" | "settings" | "help" | "about" | "scores">("none");
   const [clearFlash, setClearFlash] = useState(false);
   const [isTouchMode, setIsTouchMode] = useState(false);
+  const arkanoidSeconds = Math.ceil(state.arkanoid.timeLeft / 1000);
+  const linesToFlip = Math.max(0, ARKANOID_TRIGGER_LINES - state.arkanoidMeter);
   type TimerKey = RepeatableAction | `${RepeatableAction}Interval`;
   const inputTimers = useRef<{
     left?: number;
@@ -222,7 +225,12 @@ export const App = () => {
       <main className="layout">
         <section className="game-panel">
           <div className="game-stage">
-            <div className={clsx("board-panel", { "clear-flash": clearFlash })}>
+            <div
+              className={clsx("board-panel", {
+                "clear-flash": clearFlash,
+                arkanoid: state.mode === "arkanoid"
+              })}
+            >
               <GameCanvas state={state} />
               {state.status === "start" && (
                 <div className="overlay start-overlay">
@@ -316,7 +324,26 @@ export const App = () => {
                     <span className="label">Lines</span>
                     <strong>{state.lines}</strong>
                   </div>
+                  <div>
+                    <span className="label">Mode</span>
+                    <strong>{state.mode === "arkanoid" ? "Arkanoid" : "Tetris"}</strong>
+                  </div>
+                  <div>
+                    <span className="label">
+                      {state.mode === "arkanoid" ? "Time" : "Flip in"}
+                    </span>
+                    <strong>
+                      {state.mode === "arkanoid" ? `${arkanoidSeconds}s` : `${linesToFlip} lines`}
+                    </strong>
+                  </div>
                 </div>
+                {state.mode === "arkanoid" && state.status === "running" && (
+                  <div className="mode-banner" aria-live="polite">
+                    <span className="mode-label">Arkanoid</span>
+                    <span className="mode-timer">{arkanoidSeconds}s</span>
+                    <span className="mode-hint">Break blocks for points.</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="side-panel right">
@@ -415,6 +442,9 @@ export const App = () => {
                   </li>
                   <li>
                     <strong>Hold</strong> with C / Shift to swap the current tetromino.
+                  </li>
+                  <li>
+                    <strong>Arkanoid mode</strong> triggers every {ARKANOID_TRIGGER_LINES} lines for 30 seconds.
                   </li>
                   <li>
                     <strong>Pause</strong> anytime with P or Esc.

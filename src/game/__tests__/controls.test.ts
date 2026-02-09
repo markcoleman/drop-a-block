@@ -6,6 +6,7 @@ describe("controls", () => {
     expect(getActionForKey("ArrowLeft")).toBe("left");
     expect(getActionForKey("KeyX")).toBe("rotateCw");
     expect(getActionForKey("Space")).toBe("hardDrop");
+    expect(getActionForKey("KeyA")).toBe("debugArkanoid");
   });
 
   it("returns null for unknown keys", () => {

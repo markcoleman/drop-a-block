@@ -27,9 +27,11 @@ describe("game actions", () => {
     const startState = createInitialState();
     expect(canApplyAction(startState, "left")).toBe(true);
     expect(canApplyAction(startState, "pause")).toBe(true);
+    expect(canApplyAction(startState, "debugArkanoid")).toBe(true);
     const pausedState: GameState = { ...startState, status: "paused" };
     expect(canApplyAction(pausedState, "left")).toBe(false);
     expect(canApplyAction(pausedState, "pause")).toBe(true);
+    expect(canApplyAction(pausedState, "debugArkanoid")).toBe(true);
   });
 
   it("ignores move actions when paused", () => {
@@ -52,5 +54,29 @@ describe("game actions", () => {
     });
     const moved = applyAction(state, "left");
     expect(moved.active.position.x).toBe(1);
+  });
+
+  it("forces arkanoid mode with the debug action", () => {
+    const state = createInitialState();
+    const forced = applyAction(state, "debugArkanoid");
+    expect(forced.mode).toBe("arkanoid");
+    expect(forced.status).toBe("running");
+  });
+
+  it("routes controls to arkanoid behavior", () => {
+    const base = createInitialState();
+    const state: GameState = {
+      ...base,
+      status: "running",
+      mode: "arkanoid",
+      arkanoid: {
+        ...base.arkanoid,
+        launchDelay: 200
+      }
+    };
+    const moved = applyAction(state, "left");
+    expect(moved.arkanoid.paddleX).toBeLessThan(state.arkanoid.paddleX);
+    const launched = applyAction(moved, "rotateCw");
+    expect(launched.arkanoid.launchDelay).toBe(0);
   });
 });

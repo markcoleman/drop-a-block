@@ -11,6 +11,7 @@ export const keyMap = {
   KeyC: "hold",
   ShiftLeft: "hold",
   ShiftRight: "hold",
+  KeyA: "debugArkanoid",
   KeyP: "pause",
   Escape: "pause"
 } as const satisfies Record<string, Action>;

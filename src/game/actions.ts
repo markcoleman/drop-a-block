@@ -1,7 +1,10 @@
 import {
   hardDrop,
   holdPiece,
+  forceArkanoid,
+  launchBall,
   movePiece,
+  movePaddle,
   pauseGame,
   rotatePiece,
   softDrop,
@@ -17,22 +20,40 @@ export type Action =
   | "rotateCcw"
   | "hardDrop"
   | "hold"
-  | "pause";
+  | "pause"
+  | "debugArkanoid";
 
 export const canApplyAction = (state: GameState, action: Action): boolean => {
-  if (action === "pause") return true;
+  if (action === "pause" || action === "debugArkanoid") return true;
   if (state.status === "start") return true;
   return state.status === "running";
 };
 
 export const applyAction = (state: GameState, action: Action): GameState => {
   if (action === "pause") return pauseGame(state);
+  if (action === "debugArkanoid") return forceArkanoid(state);
 
   if (state.status === "start") {
     return startGame(state);
   }
 
   if (state.status !== "running") return state;
+
+  if (state.mode === "arkanoid") {
+    switch (action) {
+      case "left":
+        return movePaddle(state, -1);
+      case "right":
+        return movePaddle(state, 1);
+      case "down":
+      case "rotateCw":
+      case "rotateCcw":
+      case "hardDrop":
+        return launchBall(state);
+      default:
+        return state;
+    }
+  }
 
   switch (action) {
     case "left":
