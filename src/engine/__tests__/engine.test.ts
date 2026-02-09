@@ -291,7 +291,7 @@ describe("engine", () => {
     };
     const moved = movePaddle(state, 1);
     expect(moved.arkanoid.paddleX).toBeGreaterThan(state.arkanoid.paddleX);
-    expect(moved.arkanoid.ball.x).toBeCloseTo(
+    expect(moved.arkanoid.balls[0].x).toBeCloseTo(
       moved.arkanoid.paddleX + moved.arkanoid.paddleWidth / 2
     );
   });
