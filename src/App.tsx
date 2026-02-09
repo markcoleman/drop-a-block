@@ -6,8 +6,11 @@ import {
   BOARD_HEIGHT,
   BOARD_WIDTH,
   COLORS,
+  SPRINT_TARGET_LINES,
   setPaddlePosition,
   startGame,
+  ULTRA_DURATION,
+  resetGame,
   VISIBLE_ROWS
 } from "./engine/engine";
 import { Controls } from "./components/Controls";
@@ -22,6 +25,7 @@ import { Action, canApplyAction } from "./game/actions";
 import { getActionForKey, isRepeatableAction, RepeatableAction } from "./game/controls";
 import { useGame } from "./game/useGame";
 import { evaluateGoals, getNextLevelTarget } from "./utils/goals";
+import type { PlayMode } from "./engine/types";
 
 const ACTION_EFFECTS: Partial<
   Record<Action, { sound?: () => void; haptics?: boolean }>
@@ -45,6 +49,7 @@ export const App = () => {
   const [menuView, setMenuView] = useState<"none" | "settings" | "help" | "about" | "scores">("none");
   const [clearFlash, setClearFlash] = useState(false);
   const [isTouchMode, setIsTouchMode] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<PlayMode>("marathon");
   const arkanoidSeconds = Math.ceil(state.arkanoid.timeLeft / 1000);
   const linesToFlip = Math.max(0, ARKANOID_TRIGGER_LINES - state.arkanoidMeter);
   const nextLevelTarget = getNextLevelTarget(state.level);
@@ -241,7 +246,7 @@ export const App = () => {
 
   const handleStart = () => {
     setMenuView("none");
-    applyState(startGame);
+    applyState(() => startGame(resetGame(selectedMode)));
   };
 
   const handleArkanoidPointer = useCallback(
@@ -257,6 +262,13 @@ export const App = () => {
   );
 
   const arkanoidTouchEnabled = isTouchMode && state.mode === "arkanoid" && state.status === "running";
+  const modeTimeLeft = Math.max(0, state.modeTimer);
+  const modeMinutes = Math.floor(modeTimeLeft / 60000);
+  const modeSeconds = Math.floor((modeTimeLeft % 60000) / 1000)
+    .toString()
+    .padStart(2, "0");
+  const sprintLinesLeft = Math.max(0, state.targetLines - state.lines);
+  const modeLabel = state.playMode === "marathon" ? "Marathon" : state.playMode === "sprint" ? "Sprint" : "Ultra";
 
   const handleScoreSubmit = () => {
     const name = initials.trim().slice(0, 3).toUpperCase() || "AAA";
@@ -297,56 +309,88 @@ export const App = () => {
                         Pick a launch point. Tune the feel, review controls, or jump straight in.
                       </p>
                     </div>
-                  <div className="start-menu-actions">
-                    <button className="menu-button primary" onClick={handleStart}>
-                      <span className="menu-icon">
-                        <PlayIcon />
-                      </span>
+                    <div className="mode-select">
+                      <p className="eyebrow">Play Mode</p>
+                      <div className="mode-options">
+                        {([
+                          {
+                            id: "marathon",
+                            label: "Marathon",
+                            desc: "Endless climb with speed bumps every 10 lines."
+                          },
+                          {
+                            id: "sprint",
+                            label: "Sprint",
+                            desc: `Clear ${SPRINT_TARGET_LINES} lines as fast as you can.`
+                          },
+                          {
+                            id: "ultra",
+                            label: "Ultra",
+                            desc: `Score attack for ${Math.round(ULTRA_DURATION / 60000)} minutes.`
+                          }
+                        ] as const).map((mode) => (
+                          <button
+                            key={mode.id}
+                            type="button"
+                            className={clsx("mode-option", { active: selectedMode === mode.id })}
+                            onClick={() => setSelectedMode(mode.id)}
+                          >
+                            <span className="mode-option-title">{mode.label}</span>
+                            <span className="mode-option-desc">{mode.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="start-menu-actions">
+                      <button className="menu-button primary" onClick={handleStart}>
+                        <span className="menu-icon">
+                          <PlayIcon />
+                        </span>
                         <span className="menu-copy">
                           <strong>Start Game</strong>
-                        <span className="menu-desc">Drop into level {state.level}.</span>
-                      </span>
-                    </button>
-                    <button className="menu-button" onClick={() => setMenuView("scores")}>
-                      <span className="menu-icon">
-                        <TrophyIcon />
-                      </span>
-                      <span className="menu-copy">
-                        <strong>High Scores</strong>
-                        <span className="menu-desc">Your top runs and rankings.</span>
-                      </span>
-                    </button>
-                    <button className="menu-button" onClick={() => setMenuView("settings")}>
-                      <span className="menu-icon">
-                        <SettingsIcon />
-                      </span>
-                      <span className="menu-copy">
-                        <strong>Adjust Settings</strong>
-                        <span className="menu-desc">Sound, theme, and speed controls.</span>
-                      </span>
-                    </button>
-                    <button className="menu-button" onClick={() => setMenuView("help")}>
-                      <span className="menu-icon">
-                        <HelpIcon />
-                      </span>
-                      <span className="menu-copy">
-                        <strong>Help</strong>
-                        <span className="menu-desc">Controls, tactics, and pro tips.</span>
-                      </span>
-                    </button>
-                    <button className="menu-button" onClick={() => setMenuView("about")}>
-                      <span className="menu-icon">
-                        <HelpIcon />
-                      </span>
-                      <span className="menu-copy">
-                        <strong>About</strong>
-                        <span className="menu-desc">Board size, colors, and rules.</span>
-                      </span>
-                    </button>
+                          <span className="menu-desc">Drop into level {state.level}.</span>
+                        </span>
+                      </button>
+                      <button className="menu-button" onClick={() => setMenuView("scores")}>
+                        <span className="menu-icon">
+                          <TrophyIcon />
+                        </span>
+                        <span className="menu-copy">
+                          <strong>High Scores</strong>
+                          <span className="menu-desc">Your top runs and rankings.</span>
+                        </span>
+                      </button>
+                      <button className="menu-button" onClick={() => setMenuView("settings")}>
+                        <span className="menu-icon">
+                          <SettingsIcon />
+                        </span>
+                        <span className="menu-copy">
+                          <strong>Adjust Settings</strong>
+                          <span className="menu-desc">Sound, theme, and speed controls.</span>
+                        </span>
+                      </button>
+                      <button className="menu-button" onClick={() => setMenuView("help")}>
+                        <span className="menu-icon">
+                          <HelpIcon />
+                        </span>
+                        <span className="menu-copy">
+                          <strong>Help</strong>
+                          <span className="menu-desc">Controls, tactics, and pro tips.</span>
+                        </span>
+                      </button>
+                      <button className="menu-button" onClick={() => setMenuView("about")}>
+                        <span className="menu-icon">
+                          <HelpIcon />
+                        </span>
+                        <span className="menu-copy">
+                          <strong>About</strong>
+                          <span className="menu-desc">Board size, colors, and rules.</span>
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
               {state.status === "paused" && (
                 <div className="overlay">
                   <h2>Paused</h2>
@@ -358,8 +402,12 @@ export const App = () => {
               )}
               {state.status === "over" && (
                 <div className="overlay">
-                  <h2>Game Over</h2>
-                  <p>Score {state.score.toLocaleString()}</p>
+                  <h2>{state.result === "win" ? "Mode Complete" : "Game Over"}</h2>
+                  <p>
+                    {state.result === "win"
+                      ? `${modeLabel} wrapped with ${state.score.toLocaleString()} points.`
+                      : `Score ${state.score.toLocaleString()}`}
+                  </p>
                 </div>
               )}
             </div>
@@ -383,6 +431,24 @@ export const App = () => {
                     <div className="stat-card">
                       <span className="label">Flip in</span>
                       <strong>{linesToFlip} lines</strong>
+                    </div>
+                  )}
+                  <div className="stat-card">
+                    <span className="label">Mode</span>
+                    <strong>{modeLabel}</strong>
+                  </div>
+                  {state.playMode === "sprint" && (
+                    <div className="stat-card">
+                      <span className="label">Lines left</span>
+                      <strong>{sprintLinesLeft}</strong>
+                    </div>
+                  )}
+                  {state.playMode === "ultra" && (
+                    <div className="stat-card">
+                      <span className="label">Time left</span>
+                      <strong>
+                        {modeMinutes}:{modeSeconds}
+                      </strong>
                     </div>
                   )}
                 </div>
@@ -541,6 +607,10 @@ export const App = () => {
                   </li>
                   <li>
                     <strong>Arkanoid mode</strong> triggers every {ARKANOID_TRIGGER_LINES} lines for 30 seconds.
+                  </li>
+                  <li>
+                    <strong>Modes</strong> include Marathon (endless), Sprint ({SPRINT_TARGET_LINES} lines),
+                    and Ultra ({Math.round(ULTRA_DURATION / 60000)} minutes).
                   </li>
                   <li>
                     <strong>Pause</strong> anytime with P or Esc.

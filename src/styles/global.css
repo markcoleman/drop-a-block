@@ -359,6 +359,49 @@ input:focus-visible {
   font-family: var(--font-display);
 }
 
+.mode-select {
+  display: grid;
+  gap: 10px;
+}
+
+.mode-options {
+  display: grid;
+  gap: 10px;
+}
+
+.mode-option {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  padding: 12px 14px;
+  text-align: left;
+  display: grid;
+  gap: 6px;
+  cursor: pointer;
+  transition: border 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.mode-option:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.2);
+}
+
+.mode-option.active {
+  border-color: rgba(56, 189, 248, 0.8);
+  box-shadow: 0 10px 22px rgba(56, 189, 248, 0.25);
+}
+
+.mode-option-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.mode-option-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
 .start-menu-actions {
   display: grid;
   gap: 12px;

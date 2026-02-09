@@ -12,6 +12,8 @@ export type GameStatus = "start" | "running" | "paused" | "over";
 
 export type GameMode = "tetris" | "arkanoid";
 
+export type PlayMode = "marathon" | "sprint" | "ultra";
+
 export type ArkanoidBall = {
   x: number;
   y: number;
@@ -64,6 +66,10 @@ export type GameState = {
   arkanoidMeter: number;
   status: GameStatus;
   mode: GameMode;
+  playMode: PlayMode;
+  modeTimer: number;
+  targetLines: number;
+  result: "win" | "lose" | null;
   dropInterval: number;
   fallAccumulator: number;
   lockDelay: number;

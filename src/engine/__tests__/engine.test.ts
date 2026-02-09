@@ -18,7 +18,9 @@ import {
   rotatePiece,
   tick,
   BOARD_HEIGHT,
-  BOARD_WIDTH
+  BOARD_WIDTH,
+  SPRINT_TARGET_LINES,
+  ULTRA_DURATION
 } from "../engine";
 import { GameState, TetrominoType } from "../types";
 
@@ -240,6 +242,70 @@ describe("engine", () => {
     const state = resetGame();
     expect(state.status).toBe("start");
     expect(state.board.length).toBe(BOARD_HEIGHT);
+  });
+
+  it("initializes play mode defaults for ultra and sprint", () => {
+    const ultra = createInitialState("ultra");
+    expect(ultra.playMode).toBe("ultra");
+    expect(ultra.modeTimer).toBe(ULTRA_DURATION);
+    const sprint = resetGame("sprint");
+    expect(sprint.playMode).toBe("sprint");
+    expect(sprint.targetLines).toBe(SPRINT_TARGET_LINES);
+  });
+
+  it("completes sprint mode when the target lines are cleared", () => {
+    const board = createEmptyBoard();
+    board[BOARD_HEIGHT - 1] = Array(BOARD_WIDTH).fill(1);
+    for (let x = 3; x <= 6; x += 1) {
+      board[BOARD_HEIGHT - 1][x] = 0;
+    }
+    const state = makeState({
+      playMode: "sprint",
+      targetLines: SPRINT_TARGET_LINES,
+      lines: SPRINT_TARGET_LINES - 1,
+      board,
+      active: {
+        type: "I",
+        rotation: 0,
+        position: { x: 3, y: 0 }
+      }
+    });
+    const dropped = hardDrop(state);
+    expect(dropped.status).toBe("over");
+    expect(dropped.result).toBe("win");
+  });
+
+  it("marks a loss when a locked piece cannot spawn a new one", () => {
+    const board = createEmptyBoard();
+    board[0][3] = 1;
+    board[0][4] = 1;
+    board[0][5] = 1;
+    board[1][3] = 1;
+    board[1][4] = 1;
+    board[1][5] = 1;
+    const state = makeState({
+      board,
+      active: {
+        type: "I",
+        rotation: 1,
+        position: { x: 4, y: BOARD_HEIGHT - 3 }
+      }
+    });
+    const dropped = hardDrop(state);
+    expect(dropped.status).toBe("over");
+    expect(dropped.result).toBe("lose");
+  });
+
+  it("ends ultra mode when the timer runs out", () => {
+    const state = makeState({
+      playMode: "ultra",
+      modeTimer: 5,
+      targetLines: 0
+    });
+    const next = tick(state, 10);
+    expect(next.status).toBe("over");
+    expect(next.result).toBe("win");
+    expect(next.modeTimer).toBe(0);
   });
 
   it("enters arkanoid mode after clearing the trigger lines", () => {
