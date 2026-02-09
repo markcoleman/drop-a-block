@@ -82,19 +82,21 @@ export const GameCanvas = ({ state, onPointerDown, onPointerMove, onPointerUp }:
     }
 
     if (!isArkanoid) {
-      const ghost = getGhost(state);
-      getBlocks(ghost).forEach((block) => {
-        if (block.y >= BOARD_HEIGHT - VISIBLE_ROWS) {
-          drawCell(
-            ctx,
-            block.x * size,
-            (block.y - (BOARD_HEIGHT - VISIBLE_ROWS)) * size,
-            size,
-            COLOR_ARRAY[TETROMINO_INDEX[ghost.type]],
-            0.25
-          );
-        }
-      });
+      if (!state.modifiers.noGhost) {
+        const ghost = getGhost(state);
+        getBlocks(ghost).forEach((block) => {
+          if (block.y >= BOARD_HEIGHT - VISIBLE_ROWS) {
+            drawCell(
+              ctx,
+              block.x * size,
+              (block.y - (BOARD_HEIGHT - VISIBLE_ROWS)) * size,
+              size,
+              COLOR_ARRAY[TETROMINO_INDEX[ghost.type]],
+              0.25
+            );
+          }
+        });
+      }
 
       getBlocks(state.active).forEach((block) => {
         if (block.y >= BOARD_HEIGHT - VISIBLE_ROWS) {

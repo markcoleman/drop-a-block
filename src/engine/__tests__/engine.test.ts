@@ -419,4 +419,10 @@ describe("engine", () => {
     expect(getDropInterval(10)).toBe(325);
     expect(getDropInterval(20)).toBe(100);
   });
+
+  it("applies turbo modifier to drop interval with a 60ms floor", () => {
+    const modifiers = { turbo: true, mirror: false, noGhost: false };
+    expect(getDropInterval(1, modifiers)).toBe(600);
+    expect(getDropInterval(20, modifiers)).toBe(60);
+  });
 });

@@ -20,12 +20,12 @@ import { HighScores } from "./components/HighScores";
 import { loadGoalsState, loadScores, loadSettings, saveGoalsState, saveScore, saveSettings } from "./utils/storage";
 import { playClear, playLock, playMove, playRotate } from "./utils/sound";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { CloseIcon, HelpIcon, PlayIcon, SettingsIcon, TrophyIcon } from "./components/Icons";
+import { ArrowLeftIcon, CloseIcon, HelpIcon, PlayIcon, SettingsIcon, TrophyIcon } from "./components/Icons";
 import { Action, canApplyAction } from "./game/actions";
 import { getActionForKey, isRepeatableAction, RepeatableAction } from "./game/controls";
 import { useGame } from "./game/useGame";
 import { evaluateGoals, getNextLevelTarget } from "./utils/goals";
-import type { PlayMode } from "./engine/types";
+import type { GameModifiers, PlayMode } from "./engine/types";
 
 const ACTION_EFFECTS: Partial<
   Record<Action, { sound?: () => void; haptics?: boolean }>
@@ -39,6 +39,50 @@ const ACTION_EFFECTS: Partial<
   hold: { sound: playRotate }
 };
 
+const CHEAT_CODE = "TETRIS";
+const CHEAT_TAP_TARGET = 5;
+
+const MODE_LABELS: Record<PlayMode, string> = {
+  marathon: "Normal",
+  sprint: "Sprint",
+  ultra: "Ultra"
+};
+
+const MODE_OPTIONS: Array<{ id: PlayMode; label: string; desc: string }> = [
+  {
+    id: "marathon",
+    label: "Normal",
+    desc: "Classic endless climb with speed bumps every 10 lines."
+  },
+  {
+    id: "sprint",
+    label: "Sprint",
+    desc: `Clear ${SPRINT_TARGET_LINES} lines as fast as you can.`
+  },
+  {
+    id: "ultra",
+    label: "Ultra",
+    desc: `Score attack for ${Math.round(ULTRA_DURATION / 60000)} minutes.`
+  }
+];
+
+const MODE_UNLOCKS: Record<Exclude<PlayMode, "marathon">, { plays: number; label: string }> = {
+  sprint: { plays: 1, label: "Finish 1 game" },
+  ultra: { plays: 3, label: "Finish 3 games" }
+};
+
+const SECRET_MODES: Array<{ id: keyof GameModifiers; label: string; desc: string }> = [
+  { id: "turbo", label: "Turbo Gravity", desc: "Pieces fall 40% faster." },
+  { id: "mirror", label: "Mirror Controls", desc: "Left/right controls are swapped." },
+  { id: "noGhost", label: "No Ghost", desc: "Hide the landing preview." }
+];
+
+const isEditableTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return target.isContentEditable || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+};
+
 export const App = () => {
   const { state, stateRef, applyState, dispatch } = useGame();
   const [settings, setSettings] = useState(loadSettings);
@@ -46,10 +90,16 @@ export const App = () => {
   const [goalsState, setGoalsState] = useState(loadGoalsState);
   const [initials, setInitials] = useState("");
   const [showScoreEntry, setShowScoreEntry] = useState(false);
-  const [menuView, setMenuView] = useState<"none" | "settings" | "help" | "about" | "scores">("none");
+  const [menuView, setMenuView] = useState<
+    "none" | "settings" | "help" | "about" | "scores" | "secret"
+  >("none");
   const [clearFlash, setClearFlash] = useState(false);
   const [isTouchMode, setIsTouchMode] = useState(false);
+  const [startStep, setStartStep] = useState<"main" | "mode">("main");
   const [selectedMode, setSelectedMode] = useState<PlayMode>("marathon");
+  const [showCheatEntry, setShowCheatEntry] = useState(false);
+  const [cheatInput, setCheatInput] = useState("");
+  const [cheatFeedback, setCheatFeedback] = useState<"idle" | "error">("idle");
   const arkanoidSeconds = Math.ceil(state.arkanoid.timeLeft / 1000);
   const linesToFlip = Math.max(0, ARKANOID_TRIGGER_LINES - state.arkanoidMeter);
   const nextLevelTarget = getNextLevelTarget(state.level);
@@ -65,6 +115,36 @@ export const App = () => {
     rightInterval?: number;
     downInterval?: number;
   }>({});
+  const statusRef = useRef(state.status);
+  const cheatTapRef = useRef<{ count: number; timeoutId?: number }>({ count: 0 });
+  const cheatBufferRef = useRef("");
+  const updateGoalsState = useCallback(
+    (updater: (prev: typeof goalsState) => typeof goalsState) => {
+      setGoalsState((prev) => {
+        const next = updater(prev);
+        if (next === prev) return prev;
+        saveGoalsState(next);
+        return next;
+      });
+    },
+    []
+  );
+  const totalPlays = goalsState.plays ?? 0;
+  const unlockedModes = useMemo(() => {
+    const unlocked = new Set<PlayMode>(goalsState.unlockedModes ?? []);
+    unlocked.add("marathon");
+    if (totalPlays >= MODE_UNLOCKS.sprint.plays) unlocked.add("sprint");
+    if (totalPlays >= MODE_UNLOCKS.ultra.plays) unlocked.add("ultra");
+    return unlocked;
+  }, [goalsState.unlockedModes, totalPlays]);
+  const activeModifiers = useMemo<GameModifiers>(() => {
+    const secretModes = goalsState.secretModes ?? [];
+    return {
+      turbo: secretModes.includes("turbo"),
+      mirror: secretModes.includes("mirror"),
+      noGhost: secretModes.includes("noGhost")
+    };
+  }, [goalsState.secretModes]);
 
   useEffect(() => {
     saveSettings(settings);
@@ -113,6 +193,33 @@ export const App = () => {
   }, [state.status]);
 
   useEffect(() => {
+    const prevStatus = statusRef.current;
+    if (prevStatus !== "over" && state.status === "over") {
+      updateGoalsState((prev) => {
+        const nextPlays = prev.plays + 1;
+        const unlocked = new Set<PlayMode>(prev.unlockedModes ?? []);
+        unlocked.add("marathon");
+        if (nextPlays >= MODE_UNLOCKS.sprint.plays) unlocked.add("sprint");
+        if (nextPlays >= MODE_UNLOCKS.ultra.plays) unlocked.add("ultra");
+        const ordered: PlayMode[] = ["marathon", "sprint", "ultra"];
+        const nextModes = ordered.filter((mode) => unlocked.has(mode));
+        const sameModes =
+          nextModes.length === prev.unlockedModes.length &&
+          nextModes.every((mode, index) => mode === prev.unlockedModes[index]);
+        if (sameModes && nextPlays === prev.plays) return prev;
+        return { ...prev, plays: nextPlays, unlockedModes: nextModes };
+      });
+    }
+    statusRef.current = state.status;
+  }, [state.status, updateGoalsState]);
+
+  useEffect(() => {
+    if (state.status === "start") {
+      setStartStep("main");
+    }
+  }, [state.status]);
+
+  useEffect(() => {
     const progress = evaluateGoals(
       { score: state.score, lines: state.lines, level: state.level },
       goalsState.unlocked
@@ -121,10 +228,11 @@ export const App = () => {
       .filter((item) => item.achieved && !goalsState.unlocked.includes(item.goal.id))
       .map((item) => item.goal.id);
     if (newlyUnlocked.length === 0) return;
-    const updated = { unlocked: [...goalsState.unlocked, ...newlyUnlocked] };
-    setGoalsState(updated);
-    saveGoalsState(updated);
-  }, [goalsState.unlocked, state.level, state.lines, state.score]);
+    updateGoalsState((prev) => ({
+      ...prev,
+      unlocked: Array.from(new Set([...prev.unlocked, ...newlyUnlocked]))
+    }));
+  }, [goalsState.unlocked, state.level, state.lines, state.score, updateGoalsState]);
 
   useEffect(() => {
     if (!settings.sound) return;
@@ -142,16 +250,29 @@ export const App = () => {
     };
   }, [state.lastClear]);
 
+  useEffect(() => {
+    if (!unlockedModes.has(selectedMode)) {
+      setSelectedMode("marathon");
+    }
+  }, [selectedMode, unlockedModes]);
+
   const haptics = useCallback(() => {
     if (navigator.vibrate) navigator.vibrate(10);
   }, []);
 
   const handleAction = useCallback((action: Action) => {
     const current = stateRef.current;
-    if (!canApplyAction(current, action)) return;
-    dispatch(action);
+    if (current.status === "start") return;
+    const resolvedAction =
+      current.modifiers.mirror && (action === "left" || action === "right")
+        ? action === "left"
+          ? "right"
+          : "left"
+        : action;
+    if (!canApplyAction(current, resolvedAction)) return;
+    dispatch(resolvedAction);
     if (current.status !== "running") return;
-    const effect = ACTION_EFFECTS[action];
+    const effect = ACTION_EFFECTS[resolvedAction];
     if (effect?.sound && settings.sound) effect.sound();
     if (effect?.haptics) haptics();
   }, [dispatch, haptics, settings.sound, stateRef]);
@@ -176,6 +297,7 @@ export const App = () => {
   );
 
   const startRepeat = useCallback((direction: RepeatableAction) => {
+    if (stateRef.current.status === "start") return;
     stopRepeat(direction);
     handleAction(direction);
     const timeoutId = window.setTimeout(() => {
@@ -185,7 +307,7 @@ export const App = () => {
       inputTimers.current[`${direction}Interval` as const] = intervalId;
     }, settings.das);
     inputTimers.current[direction] = timeoutId;
-  }, [handleAction, settings.arr, settings.das, stopRepeat]);
+  }, [handleAction, settings.arr, settings.das, stateRef, stopRepeat]);
 
   useEffect(() => {
     return () => {
@@ -199,6 +321,12 @@ export const App = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (showCheatEntry || showScoreEntry || menuView !== "none" || isEditableTarget(event.target)) {
+        return;
+      }
+      if (stateRef.current.status === "start") {
+        return;
+      }
       const action = getActionForKey(event.code);
       if (!action) return;
       event.preventDefault();
@@ -211,6 +339,12 @@ export const App = () => {
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
+      if (showCheatEntry || showScoreEntry || menuView !== "none" || isEditableTarget(event.target)) {
+        return;
+      }
+      if (stateRef.current.status === "start") {
+        return;
+      }
       const action = getActionForKey(event.code);
       if (!action) return;
       event.preventDefault();
@@ -225,7 +359,7 @@ export const App = () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [handleAction, startRepeat, stopRepeat]);
+  }, [handleAction, menuView, showCheatEntry, showScoreEntry, startRepeat, stopRepeat]);
 
   const nextQueue = useMemo(() => state.queue.slice(0, 3), [state.queue]);
   const goalProgress = useMemo(
@@ -244,9 +378,16 @@ export const App = () => {
     return [...recentUnlocked, ...nextGoals].slice(0, 4);
   }, [goalProgress]);
 
-  const handleStart = () => {
+  const handleStartMenu = () => {
+    setSelectedMode("marathon");
+    setStartStep("mode");
+  };
+
+  const handleLaunch = () => {
+    if (!unlockedModes.has(selectedMode)) return;
     setMenuView("none");
-    applyState(() => startGame(resetGame(selectedMode)));
+    setStartStep("main");
+    applyState(() => startGame(resetGame(selectedMode, activeModifiers)));
   };
 
   const handleArkanoidPointer = useCallback(
@@ -261,6 +402,104 @@ export const App = () => {
     [applyState, stateRef]
   );
 
+  const openSecretMenu = useCallback(() => {
+    setMenuView("secret");
+    setCheatFeedback("idle");
+    setShowCheatEntry(false);
+    setCheatInput("");
+  }, []);
+
+  const handleCheatTap = useCallback(() => {
+    const tracker = cheatTapRef.current;
+    tracker.count += 1;
+    if (tracker.timeoutId) window.clearTimeout(tracker.timeoutId);
+    if (tracker.count >= CHEAT_TAP_TARGET) {
+      tracker.count = 0;
+      setShowCheatEntry(true);
+      setCheatFeedback("idle");
+      setCheatInput("");
+      return;
+    }
+    tracker.timeoutId = window.setTimeout(() => {
+      tracker.count = 0;
+    }, 900);
+  }, []);
+
+  const handleCheatSubmit = useCallback(() => {
+    const normalized = cheatInput.trim().toUpperCase();
+    if (!normalized) return;
+    if (normalized === CHEAT_CODE) {
+      openSecretMenu();
+      return;
+    }
+    setCheatFeedback("error");
+  }, [cheatInput, openSecretMenu]);
+
+  useEffect(() => {
+    const handleCheatKeys = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return;
+      if (event.key.length !== 1) return;
+      const next = `${cheatBufferRef.current}${event.key}`.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      cheatBufferRef.current = next.slice(-CHEAT_CODE.length);
+      if (cheatBufferRef.current === CHEAT_CODE) {
+        cheatBufferRef.current = "";
+        openSecretMenu();
+      }
+    };
+    window.addEventListener("keydown", handleCheatKeys);
+    return () => {
+      window.removeEventListener("keydown", handleCheatKeys);
+    };
+  }, [openSecretMenu]);
+
+  const toggleSecretMode = useCallback(
+    (mode: keyof GameModifiers) => {
+      updateGoalsState((prev) => {
+        const current = new Set(prev.secretModes ?? []);
+        if (current.has(mode)) {
+          current.delete(mode);
+        } else {
+          current.add(mode);
+        }
+        return { ...prev, secretModes: Array.from(current) };
+      });
+    },
+    [updateGoalsState]
+  );
+
+  const unlockMode = useCallback(
+    (mode: PlayMode) => {
+      updateGoalsState((prev) => {
+        const current = new Set(prev.unlockedModes ?? []);
+        current.add("marathon");
+        current.add(mode);
+        const ordered: PlayMode[] = ["marathon", "sprint", "ultra"];
+        const nextModes = ordered.filter((entry) => current.has(entry));
+        const sameModes =
+          nextModes.length === prev.unlockedModes.length &&
+          nextModes.every((entry, index) => entry === prev.unlockedModes[index]);
+        if (sameModes) return prev;
+        return { ...prev, unlockedModes: nextModes };
+      });
+    },
+    [updateGoalsState]
+  );
+
+  const unlockAllModes = useCallback(() => {
+    updateGoalsState((prev) => ({
+      ...prev,
+      unlockedModes: ["marathon", "sprint", "ultra"]
+    }));
+  }, [updateGoalsState]);
+
+  const resetModeUnlocks = useCallback(() => {
+    updateGoalsState((prev) => ({
+      ...prev,
+      plays: 0,
+      unlockedModes: ["marathon"]
+    }));
+  }, [updateGoalsState]);
+
   const arkanoidTouchEnabled = isTouchMode && state.mode === "arkanoid" && state.status === "running";
   const modeTimeLeft = Math.max(0, state.modeTimer);
   const modeMinutes = Math.floor(modeTimeLeft / 60000);
@@ -268,7 +507,7 @@ export const App = () => {
     .toString()
     .padStart(2, "0");
   const sprintLinesLeft = Math.max(0, state.targetLines - state.lines);
-  const modeLabel = state.playMode === "marathon" ? "Marathon" : state.playMode === "sprint" ? "Sprint" : "Ultra";
+  const modeLabel = MODE_LABELS[state.playMode];
 
   const handleScoreSubmit = () => {
     const name = initials.trim().slice(0, 3).toUpperCase() || "AAA";
@@ -302,92 +541,155 @@ export const App = () => {
               {state.status === "start" && (
                 <div className="overlay start-overlay">
                   <div className="start-menu">
-                    <div className="start-menu-header">
+                    <div className="start-menu-header" onClick={handleCheatTap}>
                       <p className="eyebrow">Start Menu</p>
-                      <h2>Ready to drop?</h2>
+                      <h2>{startStep === "mode" ? "Choose your mode" : "Ready to drop?"}</h2>
                       <p className="subtitle">
-                        Pick a launch point. Tune the feel, review controls, or jump straight in.
+                        {startStep === "mode"
+                          ? "Normal is unlocked by default. Other modes unlock after you play."
+                          : "Start a run, then pick the game mode type."}
                       </p>
                     </div>
-                    <div className="mode-select">
-                      <p className="eyebrow">Play Mode</p>
-                      <div className="mode-options">
-                        {([
-                          {
-                            id: "marathon",
-                            label: "Marathon",
-                            desc: "Endless climb with speed bumps every 10 lines."
-                          },
-                          {
-                            id: "sprint",
-                            label: "Sprint",
-                            desc: `Clear ${SPRINT_TARGET_LINES} lines as fast as you can.`
-                          },
-                          {
-                            id: "ultra",
-                            label: "Ultra",
-                            desc: `Score attack for ${Math.round(ULTRA_DURATION / 60000)} minutes.`
-                          }
-                        ] as const).map((mode) => (
+                    {startStep === "mode" ? (
+                      <>
+                        <div className="mode-select">
+                          <p className="eyebrow">Game Mode</p>
+                          <div className="mode-options">
+                            {MODE_OPTIONS.map((mode) => {
+                              const isUnlocked = unlockedModes.has(mode.id);
+                              const requirement =
+                                mode.id === "marathon"
+                                  ? null
+                                  : MODE_UNLOCKS[mode.id as Exclude<PlayMode, "marathon">];
+                              const progress = requirement
+                                ? Math.min(totalPlays, requirement.plays)
+                                : 0;
+                              return (
+                                <button
+                                  key={mode.id}
+                                  type="button"
+                                  className={clsx("mode-option", {
+                                    active: selectedMode === mode.id,
+                                    locked: !isUnlocked
+                                  })}
+                                  onClick={() => isUnlocked && setSelectedMode(mode.id)}
+                                  disabled={!isUnlocked}
+                                >
+                                  <span className="mode-option-title">{mode.label}</span>
+                                  <span className="mode-option-desc">{mode.desc}</span>
+                                  {!isUnlocked && requirement && (
+                                    <span className="mode-option-lock">
+                                      Locked · {requirement.label} ({progress}/{requirement.plays})
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div className="mode-unlock-progress muted">
+                          Games finished: {totalPlays}
+                        </div>
+                        <div className="start-menu-actions">
                           <button
-                            key={mode.id}
-                            type="button"
-                            className={clsx("mode-option", { active: selectedMode === mode.id })}
-                            onClick={() => setSelectedMode(mode.id)}
+                            className="menu-button primary"
+                            onClick={handleLaunch}
+                            disabled={!unlockedModes.has(selectedMode)}
                           >
-                            <span className="mode-option-title">{mode.label}</span>
-                            <span className="mode-option-desc">{mode.desc}</span>
+                            <span className="menu-icon">
+                              <PlayIcon />
+                            </span>
+                            <span className="menu-copy">
+                              <strong>Launch {MODE_LABELS[selectedMode]}</strong>
+                              <span className="menu-desc">Drop into level {state.level}.</span>
+                            </span>
                           </button>
-                        ))}
+                          <button className="menu-button" onClick={() => setStartStep("main")}>
+                            <span className="menu-icon">
+                              <ArrowLeftIcon />
+                            </span>
+                            <span className="menu-copy">
+                              <strong>Back</strong>
+                              <span className="menu-desc">Return to the start menu.</span>
+                            </span>
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="start-menu-actions">
+                        <button className="menu-button primary" onClick={handleStartMenu}>
+                          <span className="menu-icon">
+                            <PlayIcon />
+                          </span>
+                          <span className="menu-copy">
+                            <strong>Start Game</strong>
+                            <span className="menu-desc">Pick your mode next.</span>
+                          </span>
+                        </button>
+                        <button className="menu-button" onClick={() => setMenuView("scores")}>
+                          <span className="menu-icon">
+                            <TrophyIcon />
+                          </span>
+                          <span className="menu-copy">
+                            <strong>High Scores</strong>
+                            <span className="menu-desc">Your top runs and rankings.</span>
+                          </span>
+                        </button>
+                        <button className="menu-button" onClick={() => setMenuView("settings")}>
+                          <span className="menu-icon">
+                            <SettingsIcon />
+                          </span>
+                          <span className="menu-copy">
+                            <strong>Adjust Settings</strong>
+                            <span className="menu-desc">Sound, theme, and speed controls.</span>
+                          </span>
+                        </button>
+                        <button className="menu-button" onClick={() => setMenuView("help")}>
+                          <span className="menu-icon">
+                            <HelpIcon />
+                          </span>
+                          <span className="menu-copy">
+                            <strong>Help</strong>
+                            <span className="menu-desc">Controls, tactics, and pro tips.</span>
+                          </span>
+                        </button>
+                        <button className="menu-button" onClick={() => setMenuView("about")}>
+                          <span className="menu-icon">
+                            <HelpIcon />
+                          </span>
+                          <span className="menu-copy">
+                            <strong>About</strong>
+                            <span className="menu-desc">Board size, colors, and rules.</span>
+                          </span>
+                        </button>
                       </div>
-                    </div>
-                    <div className="start-menu-actions">
-                      <button className="menu-button primary" onClick={handleStart}>
-                        <span className="menu-icon">
-                          <PlayIcon />
-                        </span>
-                        <span className="menu-copy">
-                          <strong>Start Game</strong>
-                          <span className="menu-desc">Drop into level {state.level}.</span>
-                        </span>
-                      </button>
-                      <button className="menu-button" onClick={() => setMenuView("scores")}>
-                        <span className="menu-icon">
-                          <TrophyIcon />
-                        </span>
-                        <span className="menu-copy">
-                          <strong>High Scores</strong>
-                          <span className="menu-desc">Your top runs and rankings.</span>
-                        </span>
-                      </button>
-                      <button className="menu-button" onClick={() => setMenuView("settings")}>
-                        <span className="menu-icon">
-                          <SettingsIcon />
-                        </span>
-                        <span className="menu-copy">
-                          <strong>Adjust Settings</strong>
-                          <span className="menu-desc">Sound, theme, and speed controls.</span>
-                        </span>
-                      </button>
-                      <button className="menu-button" onClick={() => setMenuView("help")}>
-                        <span className="menu-icon">
-                          <HelpIcon />
-                        </span>
-                        <span className="menu-copy">
-                          <strong>Help</strong>
-                          <span className="menu-desc">Controls, tactics, and pro tips.</span>
-                        </span>
-                      </button>
-                      <button className="menu-button" onClick={() => setMenuView("about")}>
-                        <span className="menu-icon">
-                          <HelpIcon />
-                        </span>
-                        <span className="menu-copy">
-                          <strong>About</strong>
-                          <span className="menu-desc">Board size, colors, and rules.</span>
-                        </span>
-                      </button>
-                    </div>
+                    )}
+                    {showCheatEntry && (
+                      <div className="cheat-entry">
+                        <p className="eyebrow">Cheat Code</p>
+                        <div className="cheat-row">
+                          <input
+                            value={cheatInput}
+                            onChange={(event) => {
+                              setCheatInput(event.target.value);
+                              if (cheatFeedback !== "idle") setCheatFeedback("idle");
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") handleCheatSubmit();
+                            }}
+                            placeholder="Enter code"
+                            aria-label="Cheat code"
+                            autoComplete="off"
+                          />
+                          <button className="primary" onClick={handleCheatSubmit}>
+                            Enter
+                          </button>
+                        </div>
+                        {cheatFeedback === "error" && (
+                          <span className="cheat-feedback">Nope. Try again.</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -571,7 +873,9 @@ export const App = () => {
                     ? "Help"
                     : menuView === "scores"
                       ? "High Scores"
-                      : "About"}
+                      : menuView === "secret"
+                        ? "Secret Menu"
+                        : "About"}
               </h2>
               <button
                 className="icon-button"
@@ -609,7 +913,7 @@ export const App = () => {
                     <strong>Arkanoid mode</strong> triggers every {ARKANOID_TRIGGER_LINES} lines for 30 seconds.
                   </li>
                   <li>
-                    <strong>Modes</strong> include Marathon (endless), Sprint ({SPRINT_TARGET_LINES} lines),
+                    <strong>Modes</strong> include Normal (Marathon), Sprint ({SPRINT_TARGET_LINES} lines),
                     and Ultra ({Math.round(ULTRA_DURATION / 60000)} minutes).
                   </li>
                   <li>
@@ -619,6 +923,72 @@ export const App = () => {
               </div>
             ) : menuView === "scores" ? (
               <HighScores scores={scores} className="embedded" />
+            ) : menuView === "secret" ? (
+              <div className="secret-panel">
+                <p className="muted">Secret console unlocked. Changes apply to your next run.</p>
+                <div className="secret-section">
+                  <h3>Mode Unlocks</h3>
+                  <div className="secret-grid">
+                    {MODE_OPTIONS.filter((mode) => mode.id !== "marathon").map((mode) => {
+                      const isUnlocked = unlockedModes.has(mode.id);
+                      const requirement = MODE_UNLOCKS[mode.id as Exclude<PlayMode, "marathon">];
+                      const progress = Math.min(totalPlays, requirement.plays);
+                      return (
+                        <button
+                          key={mode.id}
+                          type="button"
+                          className={clsx("secret-toggle", { active: isUnlocked })}
+                          onClick={() => unlockMode(mode.id)}
+                          disabled={isUnlocked}
+                        >
+                          <span className="secret-title">
+                            {mode.label}
+                            <span className="secret-status">
+                              {isUnlocked ? "Unlocked" : `Locked · ${progress}/${requirement.plays}`}
+                            </span>
+                          </span>
+                          <span className="secret-desc">{mode.desc}</span>
+                          {!isUnlocked && (
+                            <span className="secret-meta">{requirement.label}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="secret-actions">
+                    <button className="secret-action" onClick={unlockAllModes}>
+                      Unlock All Modes
+                    </button>
+                    <button className="secret-action" onClick={resetModeUnlocks}>
+                      Reset Mode Unlocks
+                    </button>
+                  </div>
+                </div>
+                <div className="secret-section">
+                  <h3>Fun Modes</h3>
+                  <div className="secret-grid">
+                    {SECRET_MODES.map((mode) => (
+                      <button
+                        key={mode.id}
+                        type="button"
+                        className={clsx("secret-toggle", {
+                          active: Boolean(activeModifiers[mode.id])
+                        })}
+                        aria-pressed={Boolean(activeModifiers[mode.id])}
+                        onClick={() => toggleSecretMode(mode.id)}
+                      >
+                        <span className="secret-title">
+                          {mode.label}
+                          <span className="secret-status">
+                            {activeModifiers[mode.id] ? "On" : "Off"}
+                          </span>
+                        </span>
+                        <span className="secret-desc">{mode.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="help-panel">
                 <p className="muted about-copy">
