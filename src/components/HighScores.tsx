@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { HighScore } from "../utils/storage";
 
 type Props = {
@@ -6,9 +7,8 @@ type Props = {
 };
 
 export const HighScores = ({ scores, className }: Props) => {
-  const panelClass = ["panel", "high-scores", className].filter(Boolean).join(" ");
   return (
-    <section className={panelClass} aria-label="High scores">
+    <section className={clsx("panel", "high-scores", className)} aria-label="High scores">
       <h2>High Scores</h2>
       <ol className="scores-list">
         {scores.length === 0 && <li>No scores yet.</li>}

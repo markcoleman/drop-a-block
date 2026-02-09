@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { Settings } from "../utils/storage";
 
 type Props = {
@@ -7,9 +8,8 @@ type Props = {
 };
 
 export const SettingsPanel = ({ settings, onChange, className }: Props) => {
-  const panelClass = ["panel", "settings-panel", className].filter(Boolean).join(" ");
   return (
-    <section className={panelClass} aria-label="Settings">
+    <section className={clsx("panel", "settings-panel", className)} aria-label="Settings">
       <h2>Settings</h2>
       <div className="settings-group">
         <label className="toggle">

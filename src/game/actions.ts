@@ -19,6 +19,12 @@ export type Action =
   | "hold"
   | "pause";
 
+export const canApplyAction = (state: GameState, action: Action): boolean => {
+  if (action === "pause") return true;
+  if (state.status === "start") return true;
+  return state.status === "running";
+};
+
 export const applyAction = (state: GameState, action: Action): GameState => {
   if (action === "pause") return pauseGame(state);
 
