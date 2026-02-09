@@ -49,6 +49,7 @@ export const App = () => {
   const [showScoreEntry, setShowScoreEntry] = useState(false);
   const [menuView, setMenuView] = useState<"none" | "settings" | "help" | "about" | "scores">("none");
   const [clearFlash, setClearFlash] = useState(false);
+  const [isTouchMode, setIsTouchMode] = useState(false);
   const stateRef = useRef(state);
   const rafRef = useRef<number>();
   const inputTimers = useRef<{
@@ -68,6 +69,41 @@ export const App = () => {
     saveSettings(settings);
     document.documentElement.dataset.theme = settings.theme;
   }, [settings]);
+
+  useEffect(() => {
+    const coarseQuery = window.matchMedia("(pointer: coarse)");
+    const updateTouchMode = () => {
+      const hasTouchPoints = navigator.maxTouchPoints > 0;
+      const hasTouchEvent = "ontouchstart" in window;
+      setIsTouchMode(coarseQuery.matches || hasTouchPoints || hasTouchEvent);
+    };
+
+    updateTouchMode();
+    const handleTouchStart = () => setIsTouchMode(true);
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.pointerType === "touch" || event.pointerType === "pen") {
+        setIsTouchMode(true);
+      }
+    };
+
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("pointerdown", handlePointerDown);
+    if (coarseQuery.addEventListener) {
+      coarseQuery.addEventListener("change", updateTouchMode);
+    } else {
+      coarseQuery.addListener(updateTouchMode);
+    }
+
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("pointerdown", handlePointerDown);
+      if (coarseQuery.removeEventListener) {
+        coarseQuery.removeEventListener("change", updateTouchMode);
+      } else {
+        coarseQuery.removeListener(updateTouchMode);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let last = performance.now();
@@ -234,7 +270,7 @@ export const App = () => {
   };
 
   return (
-    <div className="app">
+    <div className={`app${isTouchMode ? " touch-enabled" : ""}`}>
       <main className="layout">
         <section className="game-panel">
           <div className="game-stage">
@@ -304,6 +340,9 @@ export const App = () => {
                 <div className="overlay">
                   <h2>Paused</h2>
                   <p>Press P or tap resume.</p>
+                  <button className="primary" onClick={() => handleAction("pause")}>
+                    Resume
+                  </button>
                 </div>
               )}
               {state.status === "over" && (
@@ -347,16 +386,21 @@ export const App = () => {
               </div>
             </div>
           </div>
-          <Controls
-            onLeft={() => handleAction("left")}
-            onRight={() => handleAction("right")}
-            onDown={() => handleAction("down")}
-            onRotateCw={() => handleAction("rotateCw")}
-            onRotateCcw={() => handleAction("rotateCcw")}
-            onHardDrop={() => handleAction("hardDrop")}
-            onHold={() => handleAction("hold")}
-            onPause={() => handleAction("pause")}
-          />
+          {isTouchMode && (
+            <Controls
+              onLeftStart={() => startRepeat("left")}
+              onLeftEnd={() => stopRepeat("left")}
+              onRightStart={() => startRepeat("right")}
+              onRightEnd={() => stopRepeat("right")}
+              onDownStart={() => startRepeat("down")}
+              onDownEnd={() => stopRepeat("down")}
+              onRotateCw={() => handleAction("rotateCw")}
+              onRotateCcw={() => handleAction("rotateCcw")}
+              onHardDrop={() => handleAction("hardDrop")}
+              onHold={() => handleAction("hold")}
+              onPause={() => handleAction("pause")}
+            />
+          )}
         </section>
       </main>
 
@@ -416,7 +460,10 @@ export const App = () => {
                     <strong>Rotate</strong> with Z / X or the on-screen rotate buttons.
                   </li>
                   <li>
-                    <strong>Hard drop</strong> with Space or the down arrow.
+                    <strong>Move/Drop</strong> by holding the on-screen arrows for repeat.
+                  </li>
+                  <li>
+                    <strong>Hard drop</strong> with Space or the hard drop button.
                   </li>
                   <li>
                     <strong>Hold</strong> with C / Shift to swap the current tetromino.

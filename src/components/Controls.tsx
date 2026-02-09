@@ -12,31 +12,96 @@ import {
 
 type ControlButtonProps = {
   label: string;
-  onPress: () => void;
+  onPress?: () => void;
+  onHoldStart?: () => void;
+  onHoldEnd?: () => void;
   text: string;
   children: ReactNode;
 };
 
-const ControlButton = ({ label, onPress, text, children }: ControlButtonProps) => (
-  <button className="control-button" onClick={onPress} aria-label={label}>
-    <span className="control-icon">{children}</span>
-    <span className="control-text">{text}</span>
-  </button>
-);
+const ControlButton = ({
+  label,
+  onPress,
+  onHoldStart,
+  onHoldEnd,
+  text,
+  children
+}: ControlButtonProps) => {
+  const isHoldable = Boolean(onHoldStart || onHoldEnd);
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (isHoldable) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      onHoldStart?.();
+      return;
+    }
+    onPress?.();
+  };
+
+  const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!isHoldable) return;
+    onHoldEnd?.();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== " " && event.key !== "Enter") return;
+    event.preventDefault();
+    if (isHoldable) {
+      onHoldStart?.();
+      return;
+    }
+    onPress?.();
+  };
+
+  const handleKeyUp = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (!isHoldable) return;
+    if (event.key !== " " && event.key !== "Enter") return;
+    event.preventDefault();
+    onHoldEnd?.();
+  };
+
+  return (
+    <button
+      type="button"
+      className="control-button"
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+      onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
+      onContextMenu={(event) => event.preventDefault()}
+      aria-label={label}
+    >
+      <span className="control-icon">{children}</span>
+      <span className="control-text">{text}</span>
+    </button>
+  );
+};
 
 export const Controls = ({
-  onLeft,
-  onRight,
-  onDown,
+  onLeftStart,
+  onLeftEnd,
+  onRightStart,
+  onRightEnd,
+  onDownStart,
+  onDownEnd,
   onRotateCw,
   onRotateCcw,
   onHardDrop,
   onHold,
   onPause
 }: {
-  onLeft: () => void;
-  onRight: () => void;
-  onDown: () => void;
+  onLeftStart: () => void;
+  onLeftEnd: () => void;
+  onRightStart: () => void;
+  onRightEnd: () => void;
+  onDownStart: () => void;
+  onDownEnd: () => void;
   onRotateCw: () => void;
   onRotateCcw: () => void;
   onHardDrop: () => void;
@@ -45,18 +110,33 @@ export const Controls = ({
 }) => {
   return (
     <div className="controls" aria-label="Touch controls">
-      <div className="controls-row">
-        <ControlButton label="Move left" text="Left" onPress={onLeft}>
+      <div className="controls-row controls-row--move">
+        <ControlButton
+          label="Move left"
+          text="Left"
+          onHoldStart={onLeftStart}
+          onHoldEnd={onLeftEnd}
+        >
           <ArrowLeftIcon />
         </ControlButton>
-        <ControlButton label="Move right" text="Right" onPress={onRight}>
+        <ControlButton
+          label="Move right"
+          text="Right"
+          onHoldStart={onRightStart}
+          onHoldEnd={onRightEnd}
+        >
           <ArrowRightIcon />
         </ControlButton>
-        <ControlButton label="Soft drop" text="Down" onPress={onDown}>
+        <ControlButton
+          label="Soft drop"
+          text="Down"
+          onHoldStart={onDownStart}
+          onHoldEnd={onDownEnd}
+        >
           <ArrowDownIcon />
         </ControlButton>
       </div>
-      <div className="controls-row">
+      <div className="controls-row controls-row--rotate">
         <ControlButton label="Rotate counter-clockwise" text="Rotate L" onPress={onRotateCcw}>
           <RotateCcwIcon />
         </ControlButton>
@@ -67,7 +147,7 @@ export const Controls = ({
           <HardDropIcon />
         </ControlButton>
       </div>
-      <div className="controls-row">
+      <div className="controls-row controls-row--system">
         <ControlButton label="Hold piece" text="Hold" onPress={onHold}>
           <HoldIcon />
         </ControlButton>
