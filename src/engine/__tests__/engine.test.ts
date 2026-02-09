@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  ARKANOID_TRIGGER_LINES,
   createEmptyBoard,
   createInitialState,
   getDropInterval,
   getGhost,
   hardDrop,
+  launchBall,
+  movePaddle,
   pauseGame,
   resetGame,
   holdPiece,
@@ -237,6 +240,75 @@ describe("engine", () => {
     const state = resetGame();
     expect(state.status).toBe("start");
     expect(state.board.length).toBe(BOARD_HEIGHT);
+  });
+
+  it("enters arkanoid mode after clearing the trigger lines", () => {
+    const board = createEmptyBoard();
+    board[BOARD_HEIGHT - 1] = Array(BOARD_WIDTH).fill(1);
+    for (let x = 3; x <= 6; x += 1) {
+      board[BOARD_HEIGHT - 1][x] = 0;
+    }
+    const state = makeState({
+      board,
+      arkanoidMeter: ARKANOID_TRIGGER_LINES - 1,
+      active: {
+        type: "I",
+        rotation: 0,
+        position: { x: 3, y: 0 }
+      }
+    });
+    const dropped = hardDrop(state);
+    expect(dropped.mode).toBe("arkanoid");
+    expect(dropped.arkanoidMeter).toBe(0);
+  });
+
+  it("exits arkanoid mode when the timer expires", () => {
+    const base = createInitialState();
+    const state: GameState = {
+      ...base,
+      status: "running",
+      mode: "arkanoid",
+      arkanoid: {
+        ...base.arkanoid,
+        timeLeft: 5,
+        launchDelay: 0
+      }
+    };
+    const next = tick(state, 10);
+    expect(next.mode).toBe("tetris");
+  });
+
+  it("moves the paddle and keeps the ball centered before launch", () => {
+    const base = createInitialState();
+    const state: GameState = {
+      ...base,
+      status: "running",
+      mode: "arkanoid",
+      arkanoid: {
+        ...base.arkanoid,
+        launchDelay: 500
+      }
+    };
+    const moved = movePaddle(state, 1);
+    expect(moved.arkanoid.paddleX).toBeGreaterThan(state.arkanoid.paddleX);
+    expect(moved.arkanoid.ball.x).toBeCloseTo(
+      moved.arkanoid.paddleX + moved.arkanoid.paddleWidth / 2
+    );
+  });
+
+  it("launches the ball immediately when requested", () => {
+    const base = createInitialState();
+    const state: GameState = {
+      ...base,
+      status: "running",
+      mode: "arkanoid",
+      arkanoid: {
+        ...base.arkanoid,
+        launchDelay: 400
+      }
+    };
+    const launched = launchBall(state);
+    expect(launched.arkanoid.launchDelay).toBe(0);
   });
 
   it("prevents hold swap if the spawned piece would be invalid", () => {
