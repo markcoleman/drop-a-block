@@ -76,7 +76,6 @@ body::after {
   display: flex;
   flex-direction: column;
   gap: 28px;
-  min-height: 100vh;
 }
 
 .hero {
@@ -174,7 +173,19 @@ input:focus-visible {
   align-items: center;
 }
 
+.game-stage {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  justify-items: center;
+  grid-template-areas:
+    "board"
+    "left"
+    "right";
+}
+
 .board-panel {
+  grid-area: board;
   position: relative;
   padding: 16px;
   background: var(--panel);
@@ -188,6 +199,7 @@ input:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
+  justify-self: center;
 }
 
 .board-panel::before {
@@ -348,11 +360,37 @@ input:focus-visible {
   padding-right: 6px;
 }
 
-.stats-panel {
+.about-copy {
+  margin: 6px 0 12px;
+}
+
+.about-legend span {
+  color: #0f172a;
+}
+
+.high-scores.embedded {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.high-scores.embedded h2 {
+  display: none;
+}
+
+.side-panel {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   width: 100%;
+}
+
+.side-panel.left {
+  grid-area: left;
+}
+
+.side-panel.right {
+  grid-area: right;
 }
 
 .panel {
@@ -413,6 +451,7 @@ input:focus-visible {
   gap: 10px;
   align-items: center;
   width: 100%;
+  max-width: 980px;
 }
 
 .controls-row {
@@ -586,18 +625,11 @@ input:focus-visible {
   gap: 8px;
 }
 
-.footer {
-  font-size: 0.85rem;
-  opacity: 0.7;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
 .legend {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  overflow-x: auto;
 }
 
 .legend span {
@@ -608,17 +640,30 @@ input:focus-visible {
 }
 
 @media (min-width: 900px) {
-  .layout {
-    grid-template-columns: 2fr 1fr;
-  }
-  .hero {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
   .controls {
-    flex-direction: row;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(8, minmax(72px, 1fr));
+    gap: 12px;
+    justify-items: stretch;
+  }
+  .controls-row {
+    display: contents;
+  }
+  .control-button {
+    min-width: 80px;
+    min-height: 60px;
+    padding: 8px 10px;
+  }
+}
+
+@media (min-width: 980px) {
+  .game-stage {
+    grid-template-areas: "left board right";
+    grid-template-columns: minmax(180px, 1fr) minmax(320px, 1.3fr) minmax(180px, 1fr);
+    align-items: start;
+  }
+  .side-panel {
+    justify-self: stretch;
   }
 }
 

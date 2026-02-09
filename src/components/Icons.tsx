@@ -45,6 +45,16 @@ export const CloseIcon = ({ className }: IconProps) => (
   </svg>
 );
 
+export const TrophyIcon = ({ className }: IconProps) => (
+  <svg {...iconBase(className)}>
+    <path d="M7 6h10v4a5 5 0 1 1-10 0V6z" />
+    <path d="M5 8H3a4 4 0 0 0 4 4" />
+    <path d="M19 8h2a4 4 0 0 1-4 4" />
+    <path d="M10 17h4" />
+    <path d="M9 20h6" />
+  </svg>
+);
+
 export const ArrowLeftIcon = ({ className }: IconProps) => (
   <svg {...iconBase(className)}>
     <path d="M15 6l-6 6 6 6" />
