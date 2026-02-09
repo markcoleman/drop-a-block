@@ -3,6 +3,7 @@ import {
   ArkanoidPowerupType,
   ArkanoidState,
   GameState,
+  PlayMode,
   Piece,
   RotationDirection,
   TetrominoType,
@@ -14,6 +15,8 @@ export const VISIBLE_ROWS = 20;
 export const HIDDEN_ROWS = 2;
 export const BOARD_HEIGHT = VISIBLE_ROWS + HIDDEN_ROWS;
 export const ARKANOID_TRIGGER_LINES = 10;
+export const SPRINT_TARGET_LINES = 40;
+export const ULTRA_DURATION = 120_000;
 
 const ARKANOID_DURATION = 30_000;
 const ARKANOID_LAUNCH_DELAY = 600;
@@ -439,7 +442,7 @@ const spawnPiece = (queue: TetrominoType[]) => {
 
 export const getDropInterval = (level: number) => Math.max(100, 1000 - (level - 1) * 75);
 
-export const createInitialState = (): GameState => {
+export const createInitialState = (playMode: PlayMode = "marathon"): GameState => {
   const queue = nextQueue([]);
   const { piece, queue: newQueue } = spawnPiece(queue);
   return {
@@ -454,6 +457,10 @@ export const createInitialState = (): GameState => {
     arkanoidMeter: 0,
     status: "start",
     mode: "tetris",
+    playMode,
+    modeTimer: playMode === "ultra" ? ULTRA_DURATION : 0,
+    targetLines: playMode === "sprint" ? SPRINT_TARGET_LINES : 0,
+    result: null,
     dropInterval: getDropInterval(1),
     fallAccumulator: 0,
     lockDelay: 500,
@@ -555,8 +562,11 @@ const lockPiece = (state: GameState): GameState => {
     lastClear: cleared,
     arkanoidMeter: remainder
   };
+  if (state.playMode === "sprint" && totalLines >= state.targetLines) {
+    return { ...nextState, status: "over", result: "win" };
+  }
   if (!isValidPosition(nextState.board, nextState.active)) {
-    return { ...nextState, status: "over" };
+    return { ...nextState, status: "over", result: "lose" };
   }
   if (cleared > 0 && arkanoidMeter >= ARKANOID_TRIGGER_LINES) {
     return enterArkanoid(nextState);
@@ -1031,8 +1041,16 @@ const tickArkanoid = (state: GameState, deltaMs: number): GameState => {
 
 export const tick = (state: GameState, deltaMs: number): GameState => {
   if (state.status !== "running") return state;
-  if (state.mode === "arkanoid") return tickArkanoid(state, deltaMs);
-  return tickTetris(state, deltaMs);
+  let nextState = state;
+  if (state.playMode === "ultra") {
+    const nextTimer = Math.max(0, state.modeTimer - deltaMs);
+    nextState = { ...state, modeTimer: nextTimer };
+    if (nextTimer === 0) {
+      return { ...nextState, status: "over", result: "win" };
+    }
+  }
+  if (nextState.mode === "arkanoid") return tickArkanoid(nextState, deltaMs);
+  return tickTetris(nextState, deltaMs);
 };
 
 export const getGhost = (state: GameState): Piece => {
@@ -1045,4 +1063,5 @@ export const getGhost = (state: GameState): Piece => {
   return ghost;
 };
 
-export const resetGame = (): GameState => createInitialState();
+export const resetGame = (playMode: PlayMode = "marathon"): GameState =>
+  createInitialState(playMode);
