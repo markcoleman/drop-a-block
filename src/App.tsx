@@ -3,18 +3,9 @@ import {
   BOARD_HEIGHT,
   BOARD_WIDTH,
   COLORS,
-  hardDrop,
-  holdPiece,
-  movePiece,
-  pauseGame,
-  resetGame,
-  rotatePiece,
-  softDrop,
   startGame,
-  tick,
   VISIBLE_ROWS
 } from "./engine/engine";
-import { GameState } from "./engine/types";
 import { Controls } from "./components/Controls";
 import { GameCanvas } from "./components/GameCanvas";
 import { MiniGrid } from "./components/MiniGrid";
@@ -23,26 +14,12 @@ import { loadScores, loadSettings, saveScore, saveSettings } from "./utils/stora
 import { playClear, playLock, playMove, playRotate } from "./utils/sound";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { CloseIcon, HelpIcon, PlayIcon, SettingsIcon, TrophyIcon } from "./components/Icons";
-
-const keyMap = {
-  ArrowLeft: "left",
-  ArrowRight: "right",
-  ArrowDown: "down",
-  ArrowUp: "rotateCw",
-  KeyX: "rotateCw",
-  KeyZ: "rotateCcw",
-  Space: "hardDrop",
-  KeyC: "hold",
-  ShiftLeft: "hold",
-  ShiftRight: "hold",
-  KeyP: "pause",
-  Escape: "pause"
-} as const;
-
-type Action = "left" | "right" | "down" | "rotateCw" | "rotateCcw" | "hardDrop" | "hold" | "pause";
+import { Action } from "./game/actions";
+import { getActionForKey, isRepeatableAction, RepeatableAction } from "./game/controls";
+import { useGame } from "./game/useGame";
 
 export const App = () => {
-  const [state, setState] = useState<GameState>(() => resetGame());
+  const { state, stateRef, applyState, dispatch } = useGame();
   const [settings, setSettings] = useState(loadSettings);
   const [scores, setScores] = useState(loadScores);
   const [initials, setInitials] = useState("");
@@ -50,8 +27,6 @@ export const App = () => {
   const [menuView, setMenuView] = useState<"none" | "settings" | "help" | "about" | "scores">("none");
   const [clearFlash, setClearFlash] = useState(false);
   const [isTouchMode, setIsTouchMode] = useState(false);
-  const stateRef = useRef(state);
-  const rafRef = useRef<number>();
   const inputTimers = useRef<{
     left?: number;
     right?: number;
@@ -60,10 +35,6 @@ export const App = () => {
     rightInterval?: number;
     downInterval?: number;
   }>({});
-
-  useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
 
   useEffect(() => {
     saveSettings(settings);
@@ -106,24 +77,6 @@ export const App = () => {
   }, []);
 
   useEffect(() => {
-    let last = performance.now();
-    const loop = (now: number) => {
-      const delta = now - last;
-      last = now;
-      const next = tick(stateRef.current, delta);
-      if (next !== stateRef.current) {
-        stateRef.current = next;
-        setState(next);
-      }
-      rafRef.current = requestAnimationFrame(loop);
-    };
-    rafRef.current = requestAnimationFrame(loop);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
     if (state.status === "over") {
       setShowScoreEntry(true);
     }
@@ -149,58 +102,51 @@ export const App = () => {
     if (navigator.vibrate) navigator.vibrate(10);
   };
 
-  const applyState = (fn: (prev: GameState) => GameState) => {
-    setState((prev) => {
-      const next = fn(prev);
-      stateRef.current = next;
-      return next;
-    });
-  };
-
   const handleAction = (action: Action) => {
     const current = stateRef.current;
     if (current.status === "start" && action !== "pause") {
-      applyState(startGame);
+      dispatch(action);
+      return;
     }
     if (action === "pause") {
-      applyState(pauseGame);
+      dispatch(action);
       return;
     }
     if (current.status !== "running") return;
     if (action === "left") {
-      applyState((prev) => movePiece(prev, { x: -1, y: 0 }));
+      dispatch(action);
       if (settings.sound) playMove();
     }
     if (action === "right") {
-      applyState((prev) => movePiece(prev, { x: 1, y: 0 }));
+      dispatch(action);
       if (settings.sound) playMove();
     }
     if (action === "down") {
-      applyState(softDrop);
+      dispatch(action);
       if (settings.sound) playMove();
     }
     if (action === "rotateCw") {
-      applyState((prev) => rotatePiece(prev, "cw"));
+      dispatch(action);
       if (settings.sound) playRotate();
     }
     if (action === "rotateCcw") {
-      applyState((prev) => rotatePiece(prev, "ccw"));
+      dispatch(action);
       if (settings.sound) playRotate();
     }
     if (action === "hardDrop") {
-      applyState(hardDrop);
+      dispatch(action);
       if (settings.sound) playLock();
       haptics();
     }
     if (action === "hold") {
-      applyState(holdPiece);
+      dispatch(action);
       if (settings.sound) playRotate();
     }
   };
 
-  const startRepeat = (direction: "left" | "right" | "down") => {
+  const startRepeat = (direction: RepeatableAction) => {
     handleAction(direction);
-    const timerKey = direction as "left" | "right" | "down";
+    const timerKey = direction as RepeatableAction;
     const timeoutId = window.setTimeout(() => {
       const intervalId = window.setInterval(() => {
         handleAction(direction);
@@ -210,7 +156,7 @@ export const App = () => {
     inputTimers.current[timerKey] = timeoutId;
   };
 
-  const stopRepeat = (direction: "left" | "right" | "down") => {
+  const stopRepeat = (direction: RepeatableAction) => {
     const timeoutId = inputTimers.current[direction];
     if (timeoutId) window.clearTimeout(timeoutId);
     const intervalId = inputTimers.current[`${direction}Interval` as const];
@@ -221,11 +167,11 @@ export const App = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      const action = keyMap[event.code as keyof typeof keyMap];
+      const action = getActionForKey(event.code);
       if (!action) return;
       event.preventDefault();
       if (event.repeat) return;
-      if (action === "left" || action === "right" || action === "down") {
+      if (isRepeatableAction(action)) {
         startRepeat(action);
         return;
       }
@@ -233,10 +179,10 @@ export const App = () => {
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      const action = keyMap[event.code as keyof typeof keyMap];
+      const action = getActionForKey(event.code);
       if (!action) return;
       event.preventDefault();
-      if (action === "left" || action === "right" || action === "down") {
+      if (isRepeatableAction(action)) {
         stopRepeat(action);
       }
     };
