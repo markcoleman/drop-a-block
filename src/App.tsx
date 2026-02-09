@@ -347,30 +347,24 @@ export const App = () => {
               <div className="panel stats-panel">
                 <h2>Stats</h2>
                 <div className="stat-grid">
-                  <div>
+                  <div className="stat-card">
                     <span className="label">Score</span>
                     <strong>{state.score.toLocaleString()}</strong>
                   </div>
-                  <div>
+                  <div className="stat-card compact">
                     <span className="label">Level</span>
                     <strong>{state.level}</strong>
                   </div>
-                  <div>
+                  <div className="stat-card compact">
                     <span className="label">Lines</span>
                     <strong>{state.lines}</strong>
                   </div>
-                  <div>
-                    <span className="label">Mode</span>
-                    <strong>{state.mode === "arkanoid" ? "Arkanoid" : "Tetris"}</strong>
-                  </div>
-                  <div>
-                    <span className="label">
-                      {state.mode === "arkanoid" ? "Time" : "Flip in"}
-                    </span>
-                    <strong>
-                      {state.mode === "arkanoid" ? `${arkanoidSeconds}s` : `${linesToFlip} lines`}
-                    </strong>
-                  </div>
+                  {state.mode !== "arkanoid" && (
+                    <div className="stat-card">
+                      <span className="label">Flip in</span>
+                      <strong>{linesToFlip} lines</strong>
+                    </div>
+                  )}
                 </div>
                 {state.mode === "arkanoid" && state.status === "running" && (
                   <div className="mode-banner" aria-live="polite">
@@ -379,41 +373,52 @@ export const App = () => {
                     <span className="mode-hint">Break blocks for points.</span>
                   </div>
                 )}
-              </div>
-              <div className="panel goals-panel">
-                <h2>Goals</h2>
-                <div className="goal-progress">
-                  <div className="goal-header">
-                    <span>Next level</span>
-                    <strong>{linesToNextLevel} lines</strong>
-                  </div>
-                  <div className="progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={10} aria-valuenow={state.lines - levelStart}>
-                    <div
-                      className="progress-fill"
-                      style={{ width: `${Math.round(levelProgress * 100)}%` }}
-                    />
-                  </div>
-                  <span className="muted">Level {state.level + 1} unlocks at {nextLevelTarget} lines.</span>
-                </div>
-                <div className="goal-list" aria-live="polite">
-                  {displayGoals.map((item) => (
-                    <div
-                      key={item.goal.id}
-                      className={clsx("goal-card", { completed: item.achieved })}
-                    >
-                      <span className="goal-title">{item.goal.label}</span>
-                      <div className="goal-meta">
-                        <span>{item.achieved ? "Completed" : `${item.value.toLocaleString()} / ${item.goal.target.toLocaleString()}`}</span>
-                        <span>{Math.round(item.progress * 100)}%</span>
-                      </div>
-                      <div className="progress-track">
-                        <div
-                          className="progress-fill"
-                          style={{ width: `${Math.round(item.progress * 100)}%` }}
-                        />
-                      </div>
+                <div className="goals-merged">
+                  <div className="goal-progress">
+                    <div className="goal-header">
+                      <span>Next level</span>
+                      <strong>{linesToNextLevel} lines</strong>
                     </div>
-                  ))}
+                    <div
+                      className="progress-track"
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={10}
+                      aria-valuenow={state.lines - levelStart}
+                    >
+                      <div
+                        className="progress-fill"
+                        style={{ width: `${Math.round(levelProgress * 100)}%` }}
+                      />
+                    </div>
+                    <span className="muted">
+                      Level {state.level + 1} unlocks at {nextLevelTarget} lines.
+                    </span>
+                  </div>
+                  <div className="goal-list" aria-live="polite">
+                    {displayGoals.map((item) => (
+                      <div
+                        key={item.goal.id}
+                        className={clsx("goal-card", { completed: item.achieved })}
+                      >
+                        <span className="goal-title">{item.goal.label}</span>
+                        <div className="goal-meta">
+                          <span>
+                            {item.achieved
+                              ? "Completed"
+                              : `${item.value.toLocaleString()} / ${item.goal.target.toLocaleString()}`}
+                          </span>
+                          <span>{Math.round(item.progress * 100)}%</span>
+                        </div>
+                        <div className="progress-track">
+                          <div
+                            className="progress-fill"
+                            style={{ width: `${Math.round(item.progress * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
