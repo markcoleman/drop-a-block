@@ -1,0 +1,21 @@
+import { HighScore } from "../utils/storage";
+
+export const HighScores = ({ scores }: { scores: HighScore[] }) => {
+  return (
+    <section className="panel" aria-label="High scores">
+      <h2>High Scores</h2>
+      <ol className="scores-list">
+        {scores.length === 0 && <li>No scores yet.</li>}
+        {scores.map((score) => (
+          <li key={`${score.name}-${score.date}`}>
+            <div>
+              <strong>{score.name}</strong>
+              <span className="muted">L{score.level}</span>
+            </div>
+            <span>{score.score.toLocaleString()}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+};
