@@ -232,13 +232,6 @@ export const App = () => {
               })}
             >
               <GameCanvas state={state} />
-              {state.mode === "arkanoid" && state.status === "running" && (
-                <div className="mode-banner" aria-live="polite">
-                  <span className="mode-label">Arkanoid</span>
-                  <span className="mode-timer">{arkanoidSeconds}s</span>
-                  <span className="mode-hint">Break blocks for points.</span>
-                </div>
-              )}
               {state.status === "start" && (
                 <div className="overlay start-overlay">
                   <div className="start-menu">
@@ -344,6 +337,13 @@ export const App = () => {
                     </strong>
                   </div>
                 </div>
+                {state.mode === "arkanoid" && state.status === "running" && (
+                  <div className="mode-banner" aria-live="polite">
+                    <span className="mode-label">Arkanoid</span>
+                    <span className="mode-timer">{arkanoidSeconds}s</span>
+                    <span className="mode-hint">Break blocks for points.</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="side-panel right">

@@ -272,10 +272,7 @@ input:focus-visible {
 }
 
 .mode-banner {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  right: 16px;
+  margin-top: 12px;
   padding: 10px 14px;
   border-radius: 16px;
   background: rgba(8, 15, 28, 0.78);
