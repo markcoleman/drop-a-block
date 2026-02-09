@@ -14,6 +14,12 @@ export type GameMode = "tetris" | "arkanoid";
 
 export type PlayMode = "marathon" | "sprint" | "ultra";
 
+export type GameModifiers = {
+  turbo: boolean;
+  mirror: boolean;
+  noGhost: boolean;
+};
+
 export type ArkanoidBall = {
   x: number;
   y: number;
@@ -70,6 +76,7 @@ export type GameState = {
   modeTimer: number;
   targetLines: number;
   result: "win" | "lose" | null;
+  modifiers: GameModifiers;
   dropInterval: number;
   fallAccumulator: number;
   lockDelay: number;

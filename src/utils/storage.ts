@@ -1,3 +1,5 @@
+import type { PlayMode } from "../engine/types";
+
 export type Settings = {
   theme: "dark" | "light";
   sound: boolean;
@@ -15,6 +17,9 @@ export type HighScore = {
 
 export type GoalsState = {
   unlocked: string[];
+  unlockedModes: PlayMode[];
+  secretModes: string[];
+  plays: number;
 };
 
 const SETTINGS_KEY = "dropablock:settings";
@@ -29,8 +34,13 @@ const defaultSettings: Settings = {
 };
 
 const defaultGoals: GoalsState = {
-  unlocked: []
+  unlocked: [],
+  unlockedModes: ["marathon"],
+  secretModes: [],
+  plays: 0
 };
+
+const PLAY_MODES: PlayMode[] = ["marathon", "sprint", "ultra"];
 
 export const loadSettings = (): Settings => {
   const raw = localStorage.getItem(SETTINGS_KEY);
@@ -75,7 +85,24 @@ export const loadGoalsState = (): GoalsState => {
   try {
     const parsed = JSON.parse(raw) as GoalsState;
     if (!Array.isArray(parsed.unlocked)) return defaultGoals;
-    return { unlocked: parsed.unlocked };
+    const unlockedModes = Array.isArray(parsed.unlockedModes)
+      ? parsed.unlockedModes.filter((mode): mode is PlayMode => PLAY_MODES.includes(mode as PlayMode))
+      : defaultGoals.unlockedModes;
+    const secretModes = Array.isArray(parsed.secretModes)
+      ? parsed.secretModes.filter((mode) => typeof mode === "string")
+      : defaultGoals.secretModes;
+    const plays = typeof parsed.plays === "number" && Number.isFinite(parsed.plays)
+      ? parsed.plays
+      : defaultGoals.plays;
+    const normalizedModes = unlockedModes.includes("marathon")
+      ? unlockedModes
+      : (["marathon", ...unlockedModes] as PlayMode[]);
+    return {
+      unlocked: parsed.unlocked,
+      unlockedModes: normalizedModes,
+      secretModes,
+      plays
+    };
   } catch {
     return defaultGoals;
   }

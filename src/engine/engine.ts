@@ -2,6 +2,7 @@ import {
   ArkanoidPowerup,
   ArkanoidPowerupType,
   ArkanoidState,
+  GameModifiers,
   GameState,
   PlayMode,
   Piece,
@@ -17,6 +18,12 @@ export const BOARD_HEIGHT = VISIBLE_ROWS + HIDDEN_ROWS;
 export const ARKANOID_TRIGGER_LINES = 10;
 export const SPRINT_TARGET_LINES = 40;
 export const ULTRA_DURATION = 120_000;
+
+const DEFAULT_MODIFIERS: GameModifiers = {
+  turbo: false,
+  mirror: false,
+  noGhost: false
+};
 
 const ARKANOID_DURATION = 30_000;
 const ARKANOID_LAUNCH_DELAY = 600;
@@ -440,9 +447,16 @@ const spawnPiece = (queue: TetrominoType[]) => {
   return { piece, queue: next };
 };
 
-export const getDropInterval = (level: number) => Math.max(100, 1000 - (level - 1) * 75);
+export const getDropInterval = (level: number, modifiers: GameModifiers = DEFAULT_MODIFIERS) => {
+  const base = Math.max(100, 1000 - (level - 1) * 75);
+  if (!modifiers.turbo) return base;
+  return Math.max(60, Math.round(base * 0.6));
+};
 
-export const createInitialState = (playMode: PlayMode = "marathon"): GameState => {
+export const createInitialState = (
+  playMode: PlayMode = "marathon",
+  modifiers: GameModifiers = DEFAULT_MODIFIERS
+): GameState => {
   const queue = nextQueue([]);
   const { piece, queue: newQueue } = spawnPiece(queue);
   return {
@@ -461,7 +475,8 @@ export const createInitialState = (playMode: PlayMode = "marathon"): GameState =
     modeTimer: playMode === "ultra" ? ULTRA_DURATION : 0,
     targetLines: playMode === "sprint" ? SPRINT_TARGET_LINES : 0,
     result: null,
-    dropInterval: getDropInterval(1),
+    modifiers,
+    dropInterval: getDropInterval(1, modifiers),
     fallAccumulator: 0,
     lockDelay: 500,
     lockTimer: 0,
@@ -555,7 +570,7 @@ const lockPiece = (state: GameState): GameState => {
     canHold: true,
     lines: totalLines,
     level,
-    dropInterval: getDropInterval(level),
+    dropInterval: getDropInterval(level, state.modifiers),
     score: state.score + scoreLineClear(cleared, state.level),
     fallAccumulator: 0,
     lockTimer: 0,
@@ -1063,5 +1078,7 @@ export const getGhost = (state: GameState): Piece => {
   return ghost;
 };
 
-export const resetGame = (playMode: PlayMode = "marathon"): GameState =>
-  createInitialState(playMode);
+export const resetGame = (
+  playMode: PlayMode = "marathon",
+  modifiers: GameModifiers = DEFAULT_MODIFIERS
+): GameState => createInitialState(playMode, modifiers);
