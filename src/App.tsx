@@ -77,6 +77,12 @@ const SECRET_MODES: Array<{ id: keyof GameModifiers; label: string; desc: string
   { id: "noGhost", label: "No Ghost", desc: "Hide the landing preview." }
 ];
 
+const isEditableTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return target.isContentEditable || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+};
+
 export const App = () => {
   const { state, stateRef, applyState, dispatch } = useGame();
   const [settings, setSettings] = useState(loadSettings);
