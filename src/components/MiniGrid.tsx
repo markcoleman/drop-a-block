@@ -1,5 +1,6 @@
+import type { CSSProperties } from "react";
 import { TetrominoType } from "../engine/types";
-import { COLORS } from "../engine/engine";
+import type { PaletteMap } from "../ui/palettes";
 
 const SHAPES: Record<TetrominoType, number[][]> = {
   I: [
@@ -46,19 +47,31 @@ const SHAPES: Record<TetrominoType, number[][]> = {
   ]
 };
 
-export const MiniGrid = ({ type, label }: { type: TetrominoType | null; label: string }) => {
+export const MiniGrid = ({
+  type,
+  label,
+  palette
+}: {
+  type: TetrominoType | null;
+  label: string;
+  palette: PaletteMap;
+}) => {
   return (
     <div className="mini-grid" aria-label={label} role="img">
       {Array.from({ length: 16 }).map((_, index) => {
         const row = Math.floor(index / 4);
         const col = index % 4;
         const filled = type ? SHAPES[type][row][col] === 1 : false;
-        const color = type ? COLORS[type] : "transparent";
+        const color = type ? palette[type] : "transparent";
         return (
           <span
             key={`${row}-${col}`}
-            className="mini-cell"
-            style={{ background: filled ? color : "transparent" }}
+            className={filled ? "mini-cell filled" : "mini-cell"}
+            style={
+              filled
+                ? ({ "--tile-color": color } as CSSProperties)
+                : undefined
+            }
           />
         );
       })}

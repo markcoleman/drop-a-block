@@ -45,6 +45,8 @@ describe("storage", () => {
     const settings = loadSettings();
     expect(settings).toEqual({
       theme: "dark",
+      palette: "default",
+      reducedMotion: false,
       sound: true,
       das: 150,
       arr: 50,
@@ -57,6 +59,8 @@ describe("storage", () => {
     const settings = loadSettings();
     expect(settings.sound).toBe(false);
     expect(settings.theme).toBe("dark");
+    expect(settings.palette).toBe("default");
+    expect(settings.reducedMotion).toBe(false);
     expect(settings.das).toBe(150);
     expect(settings.arr).toBe(50);
     expect(settings.holdEnabled).toBe(true);
@@ -70,10 +74,20 @@ describe("storage", () => {
   });
 
   it("persists settings", () => {
-    saveSettings({ theme: "light", sound: false, das: 120, arr: 40, holdEnabled: false });
+    saveSettings({
+      theme: "neon",
+      palette: "colorblind",
+      reducedMotion: true,
+      sound: false,
+      das: 120,
+      arr: 40,
+      holdEnabled: false
+    });
     const settings = loadSettings();
     expect(settings).toEqual({
-      theme: "light",
+      theme: "neon",
+      palette: "colorblind",
+      reducedMotion: true,
       sound: false,
       das: 120,
       arr: 40,
