@@ -101,6 +101,7 @@
   --accent-warm-glow: rgba(255, 79, 216, 0.22);
   --board-bg: #03060f;
   --board-glow: #3bffcf;
+  --focus: rgba(59, 255, 207, 0.85);
   --shadow: 0 24px 60px rgba(8, 15, 35, 0.7);
 }
 
@@ -120,6 +121,7 @@
   --accent-warm-glow: rgba(245, 159, 106, 0.24);
   --board-bg: #040302;
   --board-glow: #f4cf65;
+  --focus: rgba(244, 207, 101, 0.9);
   --font-body: var(--font-mono);
   --font-display: var(--font-mono);
 }
@@ -227,7 +229,7 @@ body::after {
   text-transform: uppercase;
   letter-spacing: 0.2em;
   font-size: var(--text-xs);
-  opacity: 0.8;
+  color: var(--text-muted);
   margin: 0 0 8px;
 }
 
@@ -452,8 +454,8 @@ input:focus-visible {
   background: linear-gradient(
     120deg,
     transparent 0%,
-    rgba(89, 211, 255, 0.35) 40%,
-    rgba(124, 131, 255, 0.45) 60%,
+    color-mix(in srgb, var(--accent) 35%, transparent) 40%,
+    color-mix(in srgb, var(--accent-strong) 45%, transparent) 60%,
     transparent 100%
   );
   opacity: 0;
@@ -476,9 +478,9 @@ input:focus-visible {
 .board-panel.arkanoid::after {
   background: linear-gradient(
       180deg,
-      rgba(56, 189, 248, 0.2) 0%,
-      rgba(124, 131, 255, 0.05) 45%,
-      rgba(244, 114, 182, 0.2) 100%
+      color-mix(in srgb, var(--accent) 28%, transparent) 0%,
+      color-mix(in srgb, var(--accent-strong) 8%, transparent) 45%,
+      color-mix(in srgb, var(--accent-warm) 26%, transparent) 100%
     ),
     repeating-linear-gradient(
       0deg,
@@ -806,6 +808,10 @@ input:focus-visible {
   gap: 4px;
 }
 
+.menu-copy strong {
+  font-family: var(--font-display);
+}
+
 .menu-desc {
   font-size: 0.85rem;
   color: var(--text-muted);
@@ -878,7 +884,7 @@ input:focus-visible {
 
 .side-panel {
   display: grid;
-  gap: 16px;
+  gap: var(--space-4);
   width: 100%;
 }
 
@@ -977,7 +983,7 @@ input:focus-visible {
   height: 100%;
   width: 0%;
   background: linear-gradient(90deg, var(--accent), var(--accent-strong));
-  transition: width 0.3s ease;
+  transition: width var(--transition-fast) var(--ease-out);
 }
 
 .goal-list {
@@ -1069,6 +1075,7 @@ input:focus-visible {
 .control-button {
   background: rgba(8, 12, 22, 0.8);
   color: white;
+  border-radius: var(--radius-lg);
   min-width: 96px;
   min-height: 72px;
   display: grid;
@@ -1163,6 +1170,10 @@ input:focus-visible {
     transform var(--transition-fast) var(--ease-out);
 }
 
+.segmented-button:hover {
+  color: var(--text);
+}
+
 .segmented-button.active {
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: #05070f;
@@ -1207,8 +1218,8 @@ input[type="radio"] {
 }
 
 .settings-group .value {
-  font-size: 0.8rem;
-  opacity: 0.6;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
 }
 
 .scores-list {
@@ -1324,6 +1335,7 @@ input[type="radio"] {
   font-size: 0.95rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  font-family: var(--font-display);
 }
 
 .secret-grid {

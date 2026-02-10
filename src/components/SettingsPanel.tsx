@@ -21,7 +21,8 @@ export const SettingsPanel = ({ settings, onChange, className }: Props) => {
                 key={theme}
                 type="button"
                 className={clsx("segmented-button", { active: settings.theme === theme })}
-                aria-pressed={settings.theme === theme}
+                role="radio"
+                aria-checked={settings.theme === theme}
                 onClick={() => onChange({ ...settings, theme })}
               >
                 {theme === "retro" ? "Retro Mono" : theme.charAt(0).toUpperCase() + theme.slice(1)}
