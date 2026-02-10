@@ -5,8 +5,8 @@ import {
   ARKANOID_TRIGGER_LINES,
   BOARD_HEIGHT,
   BOARD_WIDTH,
-  COLORS,
   SPRINT_TARGET_LINES,
+  getGhost,
   setPaddlePosition,
   startGame,
   ULTRA_DURATION,
@@ -14,18 +14,19 @@ import {
   VISIBLE_ROWS
 } from "./engine/engine";
 import { Controls } from "./components/Controls";
-import { GameCanvas } from "./components/GameCanvas";
+import { GameCanvas, type DropTrail } from "./components/GameCanvas";
 import { MiniGrid } from "./components/MiniGrid";
 import { HighScores } from "./components/HighScores";
 import { loadGoalsState, loadScores, loadSettings, saveGoalsState, saveScore, saveSettings } from "./utils/storage";
 import { playClear, playLock, playMove, playRotate, setSfxMuted } from "./audio/sfx";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { ArrowLeftIcon, CloseIcon, HelpIcon, PlayIcon, SettingsIcon, TrophyIcon } from "./components/Icons";
+import { ArrowLeftIcon, CloseIcon, HelpIcon, PauseIcon, PlayIcon, SettingsIcon, TrophyIcon } from "./components/Icons";
 import { Action, canApplyAction } from "./game/actions";
 import { useInput } from "./game/input";
 import { useGame } from "./game/useGame";
 import { evaluateGoals, getNextLevelTarget } from "./utils/goals";
 import type { GameModifiers, PlayMode } from "./engine/types";
+import { getPalette } from "./ui/palettes";
 
 const ACTION_EFFECTS: Partial<
   Record<Action, { sound?: () => void; haptics?: boolean }>
@@ -94,6 +95,9 @@ export const App = () => {
     "none" | "settings" | "help" | "about" | "scores" | "secret"
   >("none");
   const [clearFlash, setClearFlash] = useState(false);
+  const [dropTrail, setDropTrail] = useState<DropTrail | null>(null);
+  const [comboCount, setComboCount] = useState(0);
+  const [comboPulse, setComboPulse] = useState(0);
   const [isTouchMode, setIsTouchMode] = useState(false);
   const [startStep, setStartStep] = useState<"main" | "mode">("main");
   const [selectedMode, setSelectedMode] = useState<PlayMode>("marathon");
@@ -106,8 +110,11 @@ export const App = () => {
   const levelStart = (state.level - 1) * 10;
   const linesToNextLevel = Math.max(0, nextLevelTarget - state.lines);
   const levelProgress = Math.min(1, (state.lines - levelStart) / 10);
-  const clearShake = clearFlash && state.lastClear >= 2;
+  const palette = useMemo(() => getPalette(settings.palette), [settings.palette]);
+  const highScore = scores[0]?.score ?? 0;
+  const clearShake = !settings.reducedMotion && clearFlash && state.lastClear >= 2;
   const statusRef = useRef(state.status);
+  const lastClearRef = useRef(state.lastClear);
   const cheatTapRef = useRef<{ count: number; timeoutId?: number }>({ count: 0 });
   const cheatBufferRef = useRef("");
   const updateGoalsState = useCallback(
@@ -141,6 +148,8 @@ export const App = () => {
   useEffect(() => {
     saveSettings(settings);
     document.documentElement.dataset.theme = settings.theme;
+    document.documentElement.dataset.palette = settings.palette;
+    document.documentElement.dataset.motion = settings.reducedMotion ? "reduced" : "full";
     setSfxMuted(!settings.sound);
   }, [settings]);
 
@@ -232,7 +241,10 @@ export const App = () => {
   }, [state.lastClear]);
 
   useEffect(() => {
-    if (state.lastClear <= 0) return;
+    if (state.lastClear <= 0 || settings.reducedMotion) {
+      setClearFlash(false);
+      return;
+    }
     setClearFlash(false);
     const rafId = window.requestAnimationFrame(() => setClearFlash(true));
     const timeoutId = window.setTimeout(() => setClearFlash(false), 520);
@@ -240,7 +252,24 @@ export const App = () => {
       window.cancelAnimationFrame(rafId);
       window.clearTimeout(timeoutId);
     };
+  }, [settings.reducedMotion, state.lastClear]);
+
+  useEffect(() => {
+    if (state.lastClear === lastClearRef.current) return;
+    if (state.lastClear > 0) {
+      setComboCount((prev) => prev + 1);
+      setComboPulse(performance.now());
+    } else {
+      setComboCount(0);
+    }
+    lastClearRef.current = state.lastClear;
   }, [state.lastClear]);
+
+  useEffect(() => {
+    if (!dropTrail) return;
+    const timeoutId = window.setTimeout(() => setDropTrail(null), 320);
+    return () => window.clearTimeout(timeoutId);
+  }, [dropTrail]);
 
   useEffect(() => {
     if (!unlockedModes.has(selectedMode)) {
@@ -263,12 +292,26 @@ export const App = () => {
         : action;
     if (resolvedAction === "hold" && !settings.holdEnabled) return;
     if (!canApplyAction(current, resolvedAction)) return;
+    if (
+      resolvedAction === "hardDrop" &&
+      current.mode !== "arkanoid" &&
+      !current.modifiers.noGhost &&
+      !settings.reducedMotion
+    ) {
+      const ghost = getGhost(current);
+      setDropTrail({
+        active: current.active,
+        ghost,
+        startedAt: performance.now(),
+        color: palette[current.active.type]
+      });
+    }
     dispatch(resolvedAction);
     if (current.status !== "running") return;
     const effect = ACTION_EFFECTS[resolvedAction];
     if (effect?.sound) effect.sound();
     if (effect?.haptics) haptics();
-  }, [dispatch, haptics, settings.holdEnabled, stateRef]);
+  }, [dispatch, haptics, palette, settings.holdEnabled, settings.reducedMotion, stateRef]);
   const inputEnabled = menuView === "none" && !showScoreEntry && !showCheatEntry;
   const { startRepeat, stopRepeat } = useInput({
     enabled: inputEnabled,
@@ -280,6 +323,7 @@ export const App = () => {
   });
 
   const nextQueue = useMemo(() => state.queue.slice(0, 3), [state.queue]);
+  const comboActive = comboCount >= 2 && performance.now() - comboPulse < 900;
   const goalProgress = useMemo(
     () =>
       evaluateGoals(
@@ -460,19 +504,82 @@ export const App = () => {
     <div className={clsx("app", { "touch-enabled": isTouchMode })}>
       <main className="layout">
         <section className="game-panel">
+          <div className="hud-bar">
+            <div className="hud-main">
+              <div className="hud-title">
+                <span className="eyebrow">Drop-a-Block</span>
+                <div className="hud-mode">
+                  <span className="hud-mode-label">{modeLabel}</span>
+                  {state.playMode === "sprint" && (
+                    <span className="hud-mode-sub">{sprintLinesLeft} lines left</span>
+                  )}
+                  {state.playMode === "ultra" && (
+                    <span className="hud-mode-sub">
+                      {modeMinutes}:{modeSeconds} remaining
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="hud-stats">
+                <div className="hud-card">
+                  <span className="label">Score</span>
+                  <strong>{state.score.toLocaleString()}</strong>
+                </div>
+                <div className="hud-card">
+                  <span className="label">Level</span>
+                  <strong>{state.level}</strong>
+                </div>
+                <div className="hud-card">
+                  <span className="label">Lines</span>
+                  <strong>{state.lines}</strong>
+                </div>
+                <div className="hud-card">
+                  <span className="label">High</span>
+                  <strong>{highScore.toLocaleString()}</strong>
+                </div>
+              </div>
+            </div>
+            <div className="hud-actions">
+              <button
+                className="icon-button hud-button"
+                onClick={() => handleAction("pause")}
+                aria-label={state.status === "paused" ? "Resume" : "Pause"}
+              >
+                <PauseIcon />
+              </button>
+              <button
+                className="icon-button hud-button"
+                onClick={() => setMenuView("settings")}
+                aria-label="Open settings"
+              >
+                <SettingsIcon />
+              </button>
+            </div>
+          </div>
           <div className="game-stage">
             <div
               className={clsx("board-panel", {
                 "clear-flash": clearFlash,
                 "clear-shake": clearShake,
-                arkanoid: state.mode === "arkanoid"
+                arkanoid: state.mode === "arkanoid",
+                "clear-lines": clearFlash,
+                [`clear-lines-${state.lastClear}`]: clearFlash
               })}
             >
               <GameCanvas
                 state={state}
+                palette={palette}
+                dropTrail={dropTrail}
+                reducedMotion={settings.reducedMotion}
+                theme={settings.theme}
                 onPointerDown={arkanoidTouchEnabled ? handleArkanoidPointer : undefined}
                 onPointerMove={arkanoidTouchEnabled ? handleArkanoidPointer : undefined}
               />
+              {comboActive && state.status === "running" && (
+                <div className="combo-badge" aria-live="polite">
+                  Combo x{comboCount}
+                </div>
+              )}
               {state.status === "start" && (
                 <div className="overlay start-overlay">
                   <div className="start-menu">
@@ -780,7 +887,7 @@ export const App = () => {
               {settings.holdEnabled ? (
                 <div className="panel">
                   <h2>Hold</h2>
-                  <MiniGrid type={state.hold} label="Hold piece" />
+                  <MiniGrid type={state.hold} label="Hold piece" palette={palette} />
                 </div>
               ) : (
                 <div className="panel panel-muted">
@@ -792,7 +899,12 @@ export const App = () => {
                 <h2>Next</h2>
                 <div className="next-queue">
                   {nextQueue.map((type, index) => (
-                    <MiniGrid key={`${type}-${index}`} type={type} label={`Next piece ${index + 1}`} />
+                    <MiniGrid
+                      key={`${type}-${index}`}
+                      type={type}
+                      label={`Next piece ${index + 1}`}
+                      palette={palette}
+                    />
                   ))}
                 </div>
               </div>
@@ -972,7 +1084,7 @@ export const App = () => {
                   Colors are mapped per tetromino.
                 </p>
                 <div className="legend about-legend">
-                  {Object.entries(COLORS).map(([key, value]) => (
+                  {Object.entries(palette).map(([key, value]) => (
                     <span key={key} style={{ background: value }}>
                       {key}
                     </span>

@@ -1,7 +1,9 @@
 import type { PlayMode } from "../engine/types";
 
 export type Settings = {
-  theme: "dark" | "light";
+  theme: "dark" | "neon" | "retro";
+  palette: "default" | "colorblind";
+  reducedMotion: boolean;
   sound: boolean;
   das: number;
   arr: number;
@@ -26,11 +28,13 @@ export type GoalsState = {
 const SETTINGS_KEY = "dropablock:settings";
 const SCORES_KEY = "dropablock:scores";
 const GOALS_KEY = "dropablock:goals";
-const SETTINGS_SCHEMA_VERSION = 2;
+const SETTINGS_SCHEMA_VERSION = 3;
 const SCORES_SCHEMA_VERSION = 1;
 
 const defaultSettings: Settings = {
   theme: "dark",
+  palette: "default",
+  reducedMotion: false,
   sound: true,
   das: 150,
   arr: 50,
@@ -47,20 +51,33 @@ const defaultGoals: GoalsState = {
 const PLAY_MODES: PlayMode[] = ["marathon", "sprint", "ultra"];
 
 const isTheme = (value: unknown): value is Settings["theme"] =>
-  value === "dark" || value === "light";
+  value === "dark" || value === "neon" || value === "retro";
+
+const isPalette = (value: unknown): value is Settings["palette"] =>
+  value === "default" || value === "colorblind";
 
 const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
 
 const isNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
 
-const normalizeSettings = (value: Partial<Settings>): Settings => ({
-  theme: isTheme(value.theme) ? value.theme : defaultSettings.theme,
-  sound: isBoolean(value.sound) ? value.sound : defaultSettings.sound,
-  das: isNumber(value.das) ? value.das : defaultSettings.das,
-  arr: isNumber(value.arr) ? value.arr : defaultSettings.arr,
-  holdEnabled: isBoolean(value.holdEnabled) ? value.holdEnabled : defaultSettings.holdEnabled
-});
+const normalizeSettings = (value: Partial<Settings>): Settings => {
+  const rawTheme: string | undefined =
+    typeof value.theme === "string" ? value.theme : undefined;
+  const theme = isTheme(rawTheme) ? rawTheme : defaultSettings.theme;
+  const legacyTheme = rawTheme === "light" ? "dark" : theme;
+  return {
+    theme: legacyTheme as Settings["theme"],
+    palette: isPalette(value.palette) ? value.palette : defaultSettings.palette,
+    reducedMotion: isBoolean(value.reducedMotion)
+      ? value.reducedMotion
+      : defaultSettings.reducedMotion,
+    sound: isBoolean(value.sound) ? value.sound : defaultSettings.sound,
+    das: isNumber(value.das) ? value.das : defaultSettings.das,
+    arr: isNumber(value.arr) ? value.arr : defaultSettings.arr,
+    holdEnabled: isBoolean(value.holdEnabled) ? value.holdEnabled : defaultSettings.holdEnabled
+  };
+};
 
 export const loadSettings = (): Settings => {
   const raw = localStorage.getItem(SETTINGS_KEY);

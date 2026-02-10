@@ -12,6 +12,50 @@ export const SettingsPanel = ({ settings, onChange, className }: Props) => {
     <section className={clsx("panel", "settings-panel", className)} aria-label="Settings">
       <h2>Settings</h2>
       <div className="settings-group">
+        <p className="settings-label">Appearance</p>
+        <div className="settings-row">
+          <span className="settings-title">Theme</span>
+          <div className="segmented" role="radiogroup" aria-label="Theme">
+            {(["dark", "neon", "retro"] as const).map((theme) => (
+              <button
+                key={theme}
+                type="button"
+                className={clsx("segmented-button", { active: settings.theme === theme })}
+                role="radio"
+                aria-checked={settings.theme === theme}
+                onClick={() => onChange({ ...settings, theme })}
+              >
+                {theme === "retro" ? "Retro Mono" : theme.charAt(0).toUpperCase() + theme.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={settings.palette === "colorblind"}
+            onChange={(event) =>
+              onChange({
+                ...settings,
+                palette: event.target.checked ? "colorblind" : "default"
+              })
+            }
+          />
+          <span>Colorblind palette</span>
+        </label>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={settings.reducedMotion}
+            onChange={(event) =>
+              onChange({ ...settings, reducedMotion: event.target.checked })
+            }
+          />
+          <span>Reduced motion</span>
+        </label>
+      </div>
+      <div className="settings-group">
+        <p className="settings-label">Audio & Gameplay</p>
         <label className="toggle">
           <input
             type="checkbox"
@@ -21,19 +65,6 @@ export const SettingsPanel = ({ settings, onChange, className }: Props) => {
             }
           />
           <span>Sound effects</span>
-        </label>
-        <label className="toggle">
-          <input
-            type="checkbox"
-            checked={settings.theme === "dark"}
-            onChange={(event) =>
-              onChange({
-                ...settings,
-                theme: event.target.checked ? "dark" : "light"
-              })
-            }
-          />
-          <span>Dark theme</span>
         </label>
         <label className="toggle">
           <input
