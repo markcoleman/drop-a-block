@@ -62,7 +62,8 @@ const isNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
 
 const normalizeSettings = (value: Partial<Settings>): Settings => {
-  const rawTheme = typeof value.theme === "string" ? value.theme : undefined;
+  const rawTheme: string | undefined =
+    typeof value.theme === "string" ? value.theme : undefined;
   const theme = isTheme(rawTheme) ? rawTheme : defaultSettings.theme;
   const legacyTheme = rawTheme === "light" ? "dark" : theme;
   return {
