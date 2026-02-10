@@ -30,7 +30,14 @@ export const useInput = ({
   stateRef,
   onAction
 }: InputOptions) => {
-  const inputTimers = useRef<Record<TimerKey, number | undefined>>({});
+  const inputTimers = useRef<Record<TimerKey, number | undefined>>({
+    left: undefined,
+    right: undefined,
+    down: undefined,
+    leftInterval: undefined,
+    rightInterval: undefined,
+    downInterval: undefined
+  });
   const heldDirections = useRef<Record<RepeatableAction, boolean>>({
     left: false,
     right: false,
