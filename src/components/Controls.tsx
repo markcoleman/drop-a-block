@@ -94,7 +94,8 @@ export const Controls = ({
   onRotateCcw,
   onHardDrop,
   onHold,
-  onPause
+  onPause,
+  holdEnabled = true
 }: {
   onLeftStart: () => void;
   onLeftEnd: () => void;
@@ -107,6 +108,7 @@ export const Controls = ({
   onHardDrop: () => void;
   onHold: () => void;
   onPause: () => void;
+  holdEnabled?: boolean;
 }) => {
   return (
     <div className="controls" aria-label="Touch controls">
@@ -148,9 +150,11 @@ export const Controls = ({
         </ControlButton>
       </div>
       <div className="controls-row controls-row--system">
-        <ControlButton label="Hold piece" text="Hold" onPress={onHold}>
-          <HoldIcon />
-        </ControlButton>
+        {holdEnabled && (
+          <ControlButton label="Hold piece" text="Hold" onPress={onHold}>
+            <HoldIcon />
+          </ControlButton>
+        )}
         <ControlButton label="Pause" text="Pause" onPress={onPause}>
           <PauseIcon />
         </ControlButton>

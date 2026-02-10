@@ -35,6 +35,16 @@ export const SettingsPanel = ({ settings, onChange, className }: Props) => {
           />
           <span>Dark theme</span>
         </label>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={settings.holdEnabled}
+            onChange={(event) =>
+              onChange({ ...settings, holdEnabled: event.target.checked })
+            }
+          />
+          <span>Enable hold</span>
+        </label>
       </div>
       <div className="settings-group">
         <label>
