@@ -18,11 +18,11 @@ import { GameCanvas } from "./components/GameCanvas";
 import { MiniGrid } from "./components/MiniGrid";
 import { HighScores } from "./components/HighScores";
 import { loadGoalsState, loadScores, loadSettings, saveGoalsState, saveScore, saveSettings } from "./utils/storage";
-import { playClear, playLock, playMove, playRotate } from "./utils/sound";
+import { playClear, playLock, playMove, playRotate, setSfxMuted } from "./audio/sfx";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ArrowLeftIcon, CloseIcon, HelpIcon, PlayIcon, SettingsIcon, TrophyIcon } from "./components/Icons";
 import { Action, canApplyAction } from "./game/actions";
-import { getActionForKey, isRepeatableAction, RepeatableAction } from "./game/controls";
+import { useInput } from "./game/input";
 import { useGame } from "./game/useGame";
 import { evaluateGoals, getNextLevelTarget } from "./utils/goals";
 import type { GameModifiers, PlayMode } from "./engine/types";
@@ -77,12 +77,6 @@ const SECRET_MODES: Array<{ id: keyof GameModifiers; label: string; desc: string
   { id: "noGhost", label: "No Ghost", desc: "Hide the landing preview." }
 ];
 
-const isEditableTarget = (target: EventTarget | null) => {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  return target.isContentEditable || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
-};
-
 export const App = () => {
   const { state, stateRef, applyState, dispatch } = useGame();
   const [settings, setSettings] = useState(loadSettings);
@@ -106,15 +100,7 @@ export const App = () => {
   const levelStart = (state.level - 1) * 10;
   const linesToNextLevel = Math.max(0, nextLevelTarget - state.lines);
   const levelProgress = Math.min(1, (state.lines - levelStart) / 10);
-  type TimerKey = RepeatableAction | `${RepeatableAction}Interval`;
-  const inputTimers = useRef<{
-    left?: number;
-    right?: number;
-    down?: number;
-    leftInterval?: number;
-    rightInterval?: number;
-    downInterval?: number;
-  }>({});
+  const clearShake = clearFlash && state.lastClear >= 2;
   const statusRef = useRef(state.status);
   const cheatTapRef = useRef<{ count: number; timeoutId?: number }>({ count: 0 });
   const cheatBufferRef = useRef("");
@@ -149,6 +135,7 @@ export const App = () => {
   useEffect(() => {
     saveSettings(settings);
     document.documentElement.dataset.theme = settings.theme;
+    setSfxMuted(!settings.sound);
   }, [settings]);
 
   useEffect(() => {
@@ -235,9 +222,8 @@ export const App = () => {
   }, [goalsState.unlocked, state.level, state.lines, state.score, updateGoalsState]);
 
   useEffect(() => {
-    if (!settings.sound) return;
     if (state.lastClear > 0) playClear();
-  }, [state.lastClear, settings.sound]);
+  }, [state.lastClear]);
 
   useEffect(() => {
     if (state.lastClear <= 0) return;
@@ -269,97 +255,23 @@ export const App = () => {
           ? "right"
           : "left"
         : action;
+    if (resolvedAction === "hold" && !settings.holdEnabled) return;
     if (!canApplyAction(current, resolvedAction)) return;
     dispatch(resolvedAction);
     if (current.status !== "running") return;
     const effect = ACTION_EFFECTS[resolvedAction];
-    if (effect?.sound && settings.sound) effect.sound();
+    if (effect?.sound) effect.sound();
     if (effect?.haptics) haptics();
-  }, [dispatch, haptics, settings.sound, stateRef]);
-
-  const clearTimer = useCallback((key: TimerKey) => {
-    const timerId = inputTimers.current[key];
-    if (!timerId) return;
-    if (key.endsWith("Interval")) {
-      window.clearInterval(timerId);
-    } else {
-      window.clearTimeout(timerId);
-    }
-    inputTimers.current[key] = undefined;
-  }, []);
-
-  const stopRepeat = useCallback(
-    (direction: RepeatableAction) => {
-      clearTimer(direction);
-      clearTimer(`${direction}Interval` as TimerKey);
-    },
-    [clearTimer]
-  );
-
-  const startRepeat = useCallback((direction: RepeatableAction) => {
-    if (stateRef.current.status === "start") return;
-    stopRepeat(direction);
-    handleAction(direction);
-    const timeoutId = window.setTimeout(() => {
-      const intervalId = window.setInterval(() => {
-        handleAction(direction);
-      }, settings.arr);
-      inputTimers.current[`${direction}Interval` as const] = intervalId;
-    }, settings.das);
-    inputTimers.current[direction] = timeoutId;
-  }, [handleAction, settings.arr, settings.das, stateRef, stopRepeat]);
-
-  useEffect(() => {
-    return () => {
-      (["left", "right", "down"] as const).forEach(stopRepeat);
-    };
-  }, [stopRepeat]);
-
-  useEffect(() => {
-    (["left", "right", "down"] as const).forEach(stopRepeat);
-  }, [settings.arr, settings.das, stopRepeat]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (showCheatEntry || showScoreEntry || menuView !== "none" || isEditableTarget(event.target)) {
-        return;
-      }
-      if (stateRef.current.status === "start") {
-        return;
-      }
-      const action = getActionForKey(event.code);
-      if (!action) return;
-      event.preventDefault();
-      if (event.repeat) return;
-      if (isRepeatableAction(action)) {
-        startRepeat(action);
-        return;
-      }
-      handleAction(action);
-    };
-
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (showCheatEntry || showScoreEntry || menuView !== "none" || isEditableTarget(event.target)) {
-        return;
-      }
-      if (stateRef.current.status === "start") {
-        return;
-      }
-      const action = getActionForKey(event.code);
-      if (!action) return;
-      event.preventDefault();
-      if (isRepeatableAction(action)) {
-        stopRepeat(action);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, [handleAction, menuView, showCheatEntry, showScoreEntry, startRepeat, stopRepeat]);
+  }, [dispatch, haptics, settings.holdEnabled, stateRef]);
+  const inputEnabled = menuView === "none" && !showScoreEntry && !showCheatEntry;
+  const { startRepeat, stopRepeat } = useInput({
+    enabled: inputEnabled,
+    allowHold: settings.holdEnabled,
+    gameStatus: state.status,
+    settings,
+    stateRef,
+    onAction: handleAction
+  });
 
   const nextQueue = useMemo(() => state.queue.slice(0, 3), [state.queue]);
   const goalProgress = useMemo(
@@ -388,6 +300,22 @@ export const App = () => {
     setMenuView("none");
     setStartStep("main");
     applyState(() => startGame(resetGame(selectedMode, activeModifiers)));
+  };
+
+  const handleRestart = () => {
+    setMenuView("none");
+    setShowScoreEntry(false);
+    setStartStep("main");
+    setSelectedMode(state.playMode);
+    applyState(() => startGame(resetGame(state.playMode, activeModifiers)));
+  };
+
+  const handleBackToMenu = () => {
+    setMenuView("none");
+    setShowScoreEntry(false);
+    setStartStep("main");
+    setSelectedMode(state.playMode);
+    applyState(() => resetGame(state.playMode, activeModifiers));
   };
 
   const handleArkanoidPointer = useCallback(
@@ -530,6 +458,7 @@ export const App = () => {
             <div
               className={clsx("board-panel", {
                 "clear-flash": clearFlash,
+                "clear-shake": clearShake,
                 arkanoid: state.mode === "arkanoid"
               })}
             >
@@ -704,12 +633,43 @@ export const App = () => {
               )}
               {state.status === "over" && (
                 <div className="overlay">
-                  <h2>{state.result === "win" ? "Mode Complete" : "Game Over"}</h2>
-                  <p>
-                    {state.result === "win"
-                      ? `${modeLabel} wrapped with ${state.score.toLocaleString()} points.`
-                      : `Score ${state.score.toLocaleString()}`}
-                  </p>
+                  <div className="game-over-panel">
+                    <div>
+                      <p className="eyebrow">Run Summary</p>
+                      <h2>{state.result === "win" ? "Mode Complete" : "Game Over"}</h2>
+                      <p className="muted">
+                        {state.result === "win"
+                          ? `${modeLabel} wrapped with ${state.score.toLocaleString()} points.`
+                          : `Final score ${state.score.toLocaleString()}.`}
+                      </p>
+                    </div>
+                    <div className="summary-grid">
+                      <div className="summary-card">
+                        <span className="label">Score</span>
+                        <strong>{state.score.toLocaleString()}</strong>
+                      </div>
+                      <div className="summary-card">
+                        <span className="label">Lines</span>
+                        <strong>{state.lines}</strong>
+                      </div>
+                      <div className="summary-card">
+                        <span className="label">Level</span>
+                        <strong>{state.level}</strong>
+                      </div>
+                      <div className="summary-card">
+                        <span className="label">Mode</span>
+                        <strong>{modeLabel}</strong>
+                      </div>
+                    </div>
+                    <div className="summary-actions">
+                      <button type="button" className="primary" onClick={handleRestart}>
+                        Play Again
+                      </button>
+                      <button type="button" className="ghost" onClick={handleBackToMenu}>
+                        Back to Menu
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -811,10 +771,17 @@ export const App = () => {
               </div>
             </div>
             <div className="side-panel right">
-              <div className="panel">
-                <h2>Hold</h2>
-                <MiniGrid type={state.hold} label="Hold piece" />
-              </div>
+              {settings.holdEnabled ? (
+                <div className="panel">
+                  <h2>Hold</h2>
+                  <MiniGrid type={state.hold} label="Hold piece" />
+                </div>
+              ) : (
+                <div className="panel panel-muted">
+                  <h2>Hold</h2>
+                  <p className="muted">Disabled in settings.</p>
+                </div>
+              )}
               <div className="panel">
                 <h2>Next</h2>
                 <div className="next-queue">
@@ -838,6 +805,7 @@ export const App = () => {
               onHardDrop={() => handleAction("hardDrop")}
               onHold={() => handleAction("hold")}
               onPause={() => handleAction("pause")}
+              holdEnabled={settings.holdEnabled}
             />
           )}
         </section>
@@ -906,9 +874,11 @@ export const App = () => {
                   <li>
                     <strong>Hard drop</strong> with Space or the hard drop button.
                   </li>
-                  <li>
-                    <strong>Hold</strong> with C / Shift to swap the current tetromino.
-                  </li>
+                  {settings.holdEnabled && (
+                    <li>
+                      <strong>Hold</strong> with C / Shift to swap the current tetromino.
+                    </li>
+                  )}
                   <li>
                     <strong>Arkanoid mode</strong> triggers every {ARKANOID_TRIGGER_LINES} lines for 30 seconds.
                   </li>

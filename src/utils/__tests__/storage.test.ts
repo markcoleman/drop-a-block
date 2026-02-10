@@ -47,7 +47,8 @@ describe("storage", () => {
       theme: "dark",
       sound: true,
       das: 150,
-      arr: 50
+      arr: 50,
+      holdEnabled: true
     });
   });
 
@@ -58,6 +59,7 @@ describe("storage", () => {
     expect(settings.theme).toBe("dark");
     expect(settings.das).toBe(150);
     expect(settings.arr).toBe(50);
+    expect(settings.holdEnabled).toBe(true);
   });
 
   it("falls back to defaults on invalid settings JSON", () => {
@@ -68,13 +70,14 @@ describe("storage", () => {
   });
 
   it("persists settings", () => {
-    saveSettings({ theme: "light", sound: false, das: 120, arr: 40 });
+    saveSettings({ theme: "light", sound: false, das: 120, arr: 40, holdEnabled: false });
     const settings = loadSettings();
     expect(settings).toEqual({
       theme: "light",
       sound: false,
       das: 120,
-      arr: 40
+      arr: 40,
+      holdEnabled: false
     });
   });
 

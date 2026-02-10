@@ -44,6 +44,20 @@ describe("engine", () => {
     expect(rotated.active.rotation).toBe(1);
   });
 
+  it("rotates near the wall using kicks", () => {
+    const state = makeState({
+      board: createEmptyBoard(),
+      active: {
+        type: "J",
+        rotation: 0,
+        position: { x: 0, y: 0 }
+      }
+    });
+    const rotated = rotatePiece(state, "cw");
+    expect(rotated.active.rotation).toBe(1);
+    expect(rotated.active.position.x).toBeGreaterThanOrEqual(0);
+  });
+
   it("clears a single line and updates score", () => {
     const board = createEmptyBoard();
     board[BOARD_HEIGHT - 1] = Array(BOARD_WIDTH).fill(1);
@@ -58,6 +72,26 @@ describe("engine", () => {
     const dropped = hardDrop(state);
     expect(dropped.lines).toBe(1);
     expect(dropped.score).toBeGreaterThan(0);
+  });
+
+  it("clears multiple lines and shifts remaining blocks", () => {
+    const board = createEmptyBoard();
+    board[BOARD_HEIGHT - 1] = Array(BOARD_WIDTH).fill(1);
+    board[BOARD_HEIGHT - 2] = Array(BOARD_WIDTH).fill(1);
+    board[BOARD_HEIGHT - 1][4] = 0;
+    board[BOARD_HEIGHT - 2][4] = 0;
+    board[BOARD_HEIGHT - 3][0] = 2;
+    const state = makeState({
+      board,
+      active: {
+        type: "I",
+        rotation: 1,
+        position: { x: 2, y: 0 }
+      }
+    });
+    const dropped = hardDrop(state);
+    expect(dropped.lines).toBe(2);
+    expect(dropped.board[BOARD_HEIGHT - 1][0]).toBe(2);
   });
 
   it("hard drops to the floor", () => {
@@ -294,6 +328,29 @@ describe("engine", () => {
     const dropped = hardDrop(state);
     expect(dropped.status).toBe("over");
     expect(dropped.result).toBe("lose");
+  });
+
+  it("detects game over when the stack blocks a new spawn", () => {
+    const board = createEmptyBoard();
+    board[0][4] = 1;
+    board[0][5] = 1;
+    board[1][4] = 1;
+    board[1][5] = 1;
+    const queue: TetrominoType[] = ["O", "I", "T", "S", "Z", "J", "L"];
+    const state = makeState({
+      board,
+      active: {
+        type: "O",
+        rotation: 0,
+        position: { x: 4, y: BOARD_HEIGHT - 2 }
+      },
+      queue,
+      lockDelay: 1,
+      lockTimer: 0
+    });
+    const locked = tick(state, 5);
+    expect(locked.status).toBe("over");
+    expect(locked.result).toBe("lose");
   });
 
   it("ends ultra mode when the timer runs out", () => {

@@ -1,4 +1,5 @@
 let audioCtx: AudioContext | null = null;
+let muted = false;
 
 const getContext = () => {
   if (!audioCtx) {
@@ -7,8 +8,19 @@ const getContext = () => {
   return audioCtx;
 };
 
+export const setSfxMuted = (value: boolean) => {
+  muted = value;
+  if (!muted && audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume().catch(() => undefined);
+  }
+};
+
 const playTone = (frequency: number, duration = 0.08) => {
+  if (muted) return;
   const ctx = getContext();
+  if (ctx.state === "suspended") {
+    ctx.resume().catch(() => undefined);
+  }
   const oscillator = ctx.createOscillator();
   const gain = ctx.createGain();
   oscillator.frequency.value = frequency;
