@@ -5,10 +5,13 @@ import {
   ARKANOID_TRIGGER_LINES,
   BOARD_HEIGHT,
   BOARD_WIDTH,
+  DOOM_DURATION,
+  DOOM_TRIGGER_LINES,
   SPRINT_TARGET_LINES,
   getGhost,
   setPaddlePosition,
   startGame,
+  turnDoom,
   ULTRA_DURATION,
   resetGame,
   VISIBLE_ROWS
@@ -105,7 +108,9 @@ export const App = () => {
   const [cheatInput, setCheatInput] = useState("");
   const [cheatFeedback, setCheatFeedback] = useState<"idle" | "error">("idle");
   const arkanoidSeconds = Math.ceil(state.arkanoid.timeLeft / 1000);
+  const doomSeconds = Math.ceil(state.doom.timeLeft / 1000);
   const linesToFlip = Math.max(0, ARKANOID_TRIGGER_LINES - state.arkanoidMeter);
+  const doomLinesToReady = Math.max(0, DOOM_TRIGGER_LINES - state.doomMeter);
   const nextLevelTarget = getNextLevelTarget(state.level);
   const levelStart = (state.level - 1) * 10;
   const linesToNextLevel = Math.max(0, nextLevelTarget - state.lines);
@@ -313,7 +318,7 @@ export const App = () => {
     if (effect?.haptics) haptics();
   }, [dispatch, haptics, palette, settings.holdEnabled, settings.reducedMotion, stateRef]);
   const inputEnabled = menuView === "none" && !showScoreEntry && !showCheatEntry;
-  const { startRepeat, stopRepeat } = useInput({
+  const { startRepeat, stopRepeat, stopAll } = useInput({
     enabled: inputEnabled,
     allowHold: settings.holdEnabled,
     gameStatus: state.status,
@@ -321,6 +326,10 @@ export const App = () => {
     stateRef,
     onAction: handleAction
   });
+
+  useEffect(() => {
+    if (state.mode === "doom") stopAll();
+  }, [state.mode, stopAll]);
 
   const nextQueue = useMemo(() => state.queue.slice(0, 3), [state.queue]);
   const comboActive = comboCount >= 2 && performance.now() - comboPulse < 900;
@@ -379,6 +388,40 @@ export const App = () => {
     },
     [applyState, stateRef]
   );
+
+  const handleDoomPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLCanvasElement>) => {
+      const current = stateRef.current;
+      if (current.mode !== "doom" || current.status !== "running") return;
+      event.preventDefault();
+      if (event.button === 2) return;
+      if (document.pointerLockElement !== event.currentTarget) {
+        event.currentTarget.requestPointerLock();
+      }
+      dispatch("doomShoot");
+    },
+    [dispatch, stateRef]
+  );
+
+  useEffect(() => {
+    if (state.mode !== "doom") {
+      if (document.pointerLockElement) {
+        document.exitPointerLock();
+      }
+      return;
+    }
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!document.pointerLockElement) return;
+      if (stateRef.current.mode !== "doom") return;
+      const delta = event.movementX * 0.003;
+      if (delta === 0) return;
+      applyState((prev) => turnDoom(prev, delta));
+    };
+    document.addEventListener("mousemove", handleMouseMove);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, [applyState, state.mode, stateRef]);
 
   const openSecretMenu = useCallback(() => {
     setMenuView("secret");
@@ -479,6 +522,7 @@ export const App = () => {
   }, [updateGoalsState]);
 
   const arkanoidTouchEnabled = isTouchMode && state.mode === "arkanoid" && state.status === "running";
+  const doomPointerEnabled = state.mode === "doom" && state.status === "running";
   const modeTimeLeft = Math.max(0, state.modeTimer);
   const modeMinutes = Math.floor(modeTimeLeft / 60000);
   const modeSeconds = Math.floor((modeTimeLeft % 60000) / 1000)
@@ -533,6 +577,12 @@ export const App = () => {
                   <span className="label">Lines</span>
                   <strong>{state.lines}</strong>
                 </div>
+                {state.mode === "tetris" && (
+                  <div className="hud-card">
+                    <span className="label">Doom</span>
+                    <strong>{doomLinesToReady} lines</strong>
+                  </div>
+                )}
                 <div className="hud-card">
                   <span className="label">High</span>
                   <strong>{highScore.toLocaleString()}</strong>
@@ -562,6 +612,7 @@ export const App = () => {
                 "clear-flash": clearFlash,
                 "clear-shake": clearShake,
                 arkanoid: state.mode === "arkanoid",
+                doom: state.mode === "doom",
                 "clear-lines": clearFlash,
                 [`clear-lines-${state.lastClear}`]: clearFlash
               })}
@@ -572,7 +623,13 @@ export const App = () => {
                 dropTrail={dropTrail}
                 reducedMotion={settings.reducedMotion}
                 theme={settings.theme}
-                onPointerDown={arkanoidTouchEnabled ? handleArkanoidPointer : undefined}
+                onPointerDown={
+                  doomPointerEnabled
+                    ? handleDoomPointerDown
+                    : arkanoidTouchEnabled
+                      ? handleArkanoidPointer
+                      : undefined
+                }
                 onPointerMove={arkanoidTouchEnabled ? handleArkanoidPointer : undefined}
               />
               {comboActive && state.status === "running" && (
@@ -802,10 +859,16 @@ export const App = () => {
                     <span className="label">Lines</span>
                     <strong>{state.lines}</strong>
                   </div>
-                  {state.mode !== "arkanoid" && (
+                  {state.mode === "tetris" && (
                     <div className="stat-card">
                       <span className="label">Flip in</span>
                       <strong>{linesToFlip} lines</strong>
+                    </div>
+                  )}
+                  {state.mode === "tetris" && (
+                    <div className="stat-card">
+                      <span className="label">Doom</span>
+                      <strong>{doomLinesToReady} lines</strong>
                     </div>
                   )}
                   <div className="stat-card">
@@ -832,6 +895,13 @@ export const App = () => {
                     <span className="mode-label">Arkanoid</span>
                     <span className="mode-timer">{arkanoidSeconds}s</span>
                     <span className="mode-hint">Break blocks for points.</span>
+                  </div>
+                )}
+                {state.mode === "doom" && state.status === "running" && (
+                  <div className="mode-banner doom" aria-live="polite">
+                    <span className="mode-label">Doom Run</span>
+                    <span className="mode-timer">{doomSeconds}s</span>
+                    <span className="mode-hint">Find the exit. WASD + mouse to shoot.</span>
                   </div>
                 )}
                 <div className="goals-merged">
@@ -910,7 +980,7 @@ export const App = () => {
               </div>
             </div>
           </div>
-          {isTouchMode && (
+          {isTouchMode && state.mode !== "doom" && (
             <Controls
               onLeftStart={() => startRepeat("left")}
               onLeftEnd={() => stopRepeat("left")}
@@ -999,6 +1069,10 @@ export const App = () => {
                   )}
                   <li>
                     <strong>Arkanoid mode</strong> triggers every {ARKANOID_TRIGGER_LINES} lines for 30 seconds.
+                  </li>
+                  <li>
+                    <strong>Doom run</strong> triggers every {DOOM_TRIGGER_LINES} lines. You get{" "}
+                    {Math.round(DOOM_DURATION / 1000)} seconds to clear a path to the exit with WASD + mouse.
                   </li>
                   <li>
                     <strong>Modes</strong> include Normal (Marathon), Sprint ({SPRINT_TARGET_LINES} lines),

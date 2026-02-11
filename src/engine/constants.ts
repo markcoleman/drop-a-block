@@ -5,6 +5,12 @@ export const VISIBLE_ROWS = 20;
 export const HIDDEN_ROWS = 2;
 export const BOARD_HEIGHT = VISIBLE_ROWS + HIDDEN_ROWS;
 export const ARKANOID_TRIGGER_LINES = 10;
+export const DOOM_TRIGGER_LINES = 15;
+export const DOOM_DURATION = 30_000;
+export const DOOM_PLAYER_SPEED = 0.0042;
+export const DOOM_SHOT_COOLDOWN = 160;
+export const DOOM_EXIT_RADIUS = 0.35;
+export const DOOM_EXIT_BONUS = 150;
 export const SPRINT_TARGET_LINES = 40;
 export const ULTRA_DURATION = 120_000;
 

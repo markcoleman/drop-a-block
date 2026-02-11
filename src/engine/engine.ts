@@ -3,6 +3,9 @@ export {
   BOARD_HEIGHT,
   BOARD_WIDTH,
   COLORS,
+  DOOM_DURATION,
+  DOOM_EXIT_BONUS,
+  DOOM_TRIGGER_LINES,
   HIDDEN_ROWS,
   SPRINT_TARGET_LINES,
   TETROMINO_INDEX,
@@ -18,6 +21,8 @@ export { getDropInterval } from "./rules";
 export { movePiece, rotatePiece, getGhost } from "./tetris";
 
 export { launchBall, movePaddle, setPaddlePosition } from "./arkanoid";
+
+export { doomShoot, setDoomInput, turnDoom } from "./doom";
 
 export {
   createInitialState,
