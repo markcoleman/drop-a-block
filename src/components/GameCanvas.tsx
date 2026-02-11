@@ -60,6 +60,14 @@ const shade = (hex: string, amount: number) => {
   return `rgb(${next.r}, ${next.g}, ${next.b})`;
 };
 
+const shadeByFactor = (hex: string, factor: number) => {
+  const { r, g, b } = parseHex(hex);
+  const clamped = Math.max(0, Math.min(1, factor));
+  return `rgb(${Math.round(r * clamped)}, ${Math.round(g * clamped)}, ${Math.round(
+    b * clamped
+  )})`;
+};
+
 const roundedRect = (
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -130,6 +138,7 @@ const drawGhostTile = (
   ctx.restore();
 };
 
+
 export const GameCanvas = ({
   state,
   palette,
@@ -142,6 +151,10 @@ export const GameCanvas = ({
 }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const hasPointerHandlers = Boolean(onPointerDown || onPointerMove || onPointerUp);
+  const spriteRef = useRef<{
+    imp: HTMLImageElement[];
+    items: Record<string, HTMLImageElement>;
+  }>({ imp: [], items: {} });
   const themeRef = useRef({
     board: "#0a0f1f",
     grid: "rgba(255,255,255,0.08)",
@@ -154,6 +167,23 @@ export const GameCanvas = ({
   });
   const clearRef = useRef<{ count: number; startedAt: number } | null>(null);
   const lastClearRef = useRef(state.lastClear);
+
+  useEffect(() => {
+    const base = import.meta.env.BASE_URL ?? "/";
+    const load = (name: string) => {
+      const img = new Image();
+      img.src = `${base}sprites/doom/${name}`;
+      return img;
+    };
+    spriteRef.current = {
+      imp: [load("imp_1.png"), load("imp_2.png")],
+      items: {
+        health: load("item_health.png"),
+        armor: load("item_armor.png"),
+        ammo: load("item_ammo.png")
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const styles = getComputedStyle(document.documentElement);
@@ -185,6 +215,7 @@ export const GameCanvas = ({
     if (!ctx) return;
     const size = canvas.width / BOARD_WIDTH;
     const isArkanoid = state.mode === "arkanoid";
+    const isDoom = state.mode === "doom";
     const visibleStart = BOARD_HEIGHT - VISIBLE_ROWS;
     const paletteArray = ["transparent", ...TETROMINO_ORDER.map((type) => palette[type])];
     const now = performance.now();
@@ -193,7 +224,7 @@ export const GameCanvas = ({
     ctx.fillStyle = themeRef.current.board;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    if (!isArkanoid && dropTrail && !reducedMotion) {
+    if (!isArkanoid && !isDoom && dropTrail && !reducedMotion) {
       const trailAge = now - dropTrail.startedAt;
       const trailProgress = Math.min(trailAge / 280, 1);
       if (trailProgress < 1) {
@@ -225,7 +256,7 @@ export const GameCanvas = ({
       }
     }
 
-    if (!isArkanoid) {
+    if (!isArkanoid && !isDoom) {
       ctx.strokeStyle = themeRef.current.grid;
       for (let y = visibleStart; y < BOARD_HEIGHT; y += 1) {
         for (let x = 0; x < BOARD_WIDTH; x += 1) {
@@ -267,6 +298,315 @@ export const GameCanvas = ({
           );
         }
       });
+    } else if (isDoom) {
+      const { player, exit } = state.doom;
+      const width = canvas.width;
+      const height = canvas.height;
+      const fov = Math.PI / 3;
+      const halfFov = fov / 2;
+      const maxDepth = VISIBLE_ROWS + 2;
+      const rayStep = 2;
+      const hudHeight = height * 0.2;
+
+      const toBoardY = (gridY: number) => BOARD_HEIGHT - 1 - gridY;
+      const getCellValue = (gridX: number, gridY: number) => {
+        if (gridX < 0 || gridX >= BOARD_WIDTH || gridY < 0 || gridY >= VISIBLE_ROWS) {
+          return -1;
+        }
+        const boardY = toBoardY(gridY);
+        return state.board[boardY]?.[gridX] ?? 0;
+      };
+
+      const castRayDistance = (angle: number) => {
+        const dirX = Math.cos(angle);
+        const dirY = Math.sin(angle);
+        let mapX = Math.floor(player.x);
+        let mapY = Math.floor(player.y);
+        const deltaDistX = dirX === 0 ? 1e30 : Math.abs(1 / dirX);
+        const deltaDistY = dirY === 0 ? 1e30 : Math.abs(1 / dirY);
+        let stepX = 0;
+        let stepY = 0;
+        let sideDistX = 0;
+        let sideDistY = 0;
+        if (dirX < 0) {
+          stepX = -1;
+          sideDistX = (player.x - mapX) * deltaDistX;
+        } else {
+          stepX = 1;
+          sideDistX = (mapX + 1 - player.x) * deltaDistX;
+        }
+        if (dirY < 0) {
+          stepY = -1;
+          sideDistY = (player.y - mapY) * deltaDistY;
+        } else {
+          stepY = 1;
+          sideDistY = (mapY + 1 - player.y) * deltaDistY;
+        }
+        let distance = maxDepth;
+        let hit = false;
+        let side = 0;
+        while (!hit) {
+          if (sideDistX < sideDistY) {
+            sideDistX += deltaDistX;
+            mapX += stepX;
+            side = 0;
+          } else {
+            sideDistY += deltaDistY;
+            mapY += stepY;
+            side = 1;
+          }
+          if (mapX < 0 || mapX >= BOARD_WIDTH || mapY < 0 || mapY >= VISIBLE_ROWS) {
+            break;
+          }
+          if (getCellValue(mapX, mapY) > 0) {
+            hit = true;
+          }
+        }
+        if (hit) {
+          distance =
+            side === 0
+              ? (mapX - player.x + (1 - stepX) / 2) / (dirX || 1e-6)
+              : (mapY - player.y + (1 - stepY) / 2) / (dirY || 1e-6);
+        }
+        return Math.max(0.1, distance);
+      };
+
+      const drawBillboard = (
+        entityX: number,
+        entityY: number,
+        color: string,
+        heightScale = 1,
+        widthScale = 0.35,
+        sprite?: HTMLImageElement
+      ) => {
+        const vectorX = entityX - player.x;
+        const vectorY = entityY - player.y;
+        const distance = Math.hypot(vectorX, vectorY);
+        if (distance < 0.01) return;
+        let angle = Math.atan2(vectorY, vectorX);
+        let diff = angle - player.angle;
+        diff = ((diff + Math.PI) % (Math.PI * 2)) - Math.PI;
+        if (Math.abs(diff) > halfFov) return;
+        const wallDistance = castRayDistance(angle);
+        if (wallDistance < distance - 0.2) return;
+        const screenX = (0.5 + diff / fov) * width;
+        const spriteHeight = Math.min(height * 0.9, (height / distance) * heightScale);
+        const spriteWidth = sprite
+          ? spriteHeight * (sprite.naturalWidth / sprite.naturalHeight) * widthScale
+          : spriteHeight * widthScale;
+        const spriteTop = height / 2 - spriteHeight / 2;
+        ctx.save();
+        if (sprite && sprite.complete && sprite.naturalWidth > 0) {
+          ctx.drawImage(sprite, screenX - spriteWidth / 2, spriteTop, spriteWidth, spriteHeight);
+        } else {
+          ctx.fillStyle = color;
+          ctx.fillRect(screenX - spriteWidth / 2, spriteTop, spriteWidth, spriteHeight);
+          ctx.strokeStyle = "rgba(15, 23, 42, 0.6)";
+          ctx.strokeRect(screenX - spriteWidth / 2, spriteTop, spriteWidth, spriteHeight);
+        }
+        ctx.restore();
+      };
+
+      const ceiling = ctx.createLinearGradient(0, 0, 0, height * 0.6);
+      ceiling.addColorStop(0, "rgba(6, 7, 14, 0.95)");
+      ceiling.addColorStop(1, "rgba(20, 10, 18, 0.85)");
+      ctx.fillStyle = ceiling;
+      ctx.fillRect(0, 0, width, height / 2);
+      const floor = ctx.createLinearGradient(0, height / 2, 0, height);
+      floor.addColorStop(0, "rgba(18, 12, 12, 0.9)");
+      floor.addColorStop(1, "rgba(3, 4, 10, 0.98)");
+      ctx.fillStyle = floor;
+      ctx.fillRect(0, height / 2, width, height / 2);
+
+      for (let column = 0; column < width; column += rayStep) {
+        const rayAngle = player.angle - halfFov + (column / width) * fov;
+        const dirX = Math.cos(rayAngle);
+        const dirY = Math.sin(rayAngle);
+        let mapX = Math.floor(player.x);
+        let mapY = Math.floor(player.y);
+        const deltaDistX = dirX === 0 ? 1e30 : Math.abs(1 / dirX);
+        const deltaDistY = dirY === 0 ? 1e30 : Math.abs(1 / dirY);
+        let stepX = 0;
+        let stepY = 0;
+        let sideDistX = 0;
+        let sideDistY = 0;
+        if (dirX < 0) {
+          stepX = -1;
+          sideDistX = (player.x - mapX) * deltaDistX;
+        } else {
+          stepX = 1;
+          sideDistX = (mapX + 1 - player.x) * deltaDistX;
+        }
+        if (dirY < 0) {
+          stepY = -1;
+          sideDistY = (player.y - mapY) * deltaDistY;
+        } else {
+          stepY = 1;
+          sideDistY = (mapY + 1 - player.y) * deltaDistY;
+        }
+        let hitValue = 0;
+        let side = 0;
+        let hit = false;
+        while (!hit) {
+          if (sideDistX < sideDistY) {
+            sideDistX += deltaDistX;
+            mapX += stepX;
+            side = 0;
+          } else {
+            sideDistY += deltaDistY;
+            mapY += stepY;
+            side = 1;
+          }
+          if (mapX < 0 || mapX >= BOARD_WIDTH || mapY < 0 || mapY >= VISIBLE_ROWS) {
+            break;
+          }
+          hitValue = getCellValue(mapX, mapY);
+          if (hitValue > 0) {
+            hit = true;
+          }
+        }
+
+        if (!hit) continue;
+        const distance =
+          side === 0
+            ? (mapX - player.x + (1 - stepX) / 2) / (dirX || 1e-6)
+            : (mapY - player.y + (1 - stepY) / 2) / (dirY || 1e-6);
+        const corrected = Math.max(0.1, distance);
+        const lineHeight = Math.min(height, height / corrected);
+        const drawStart = Math.max(0, height / 2 - lineHeight / 2);
+        const drawEnd = Math.min(height, height / 2 + lineHeight / 2);
+        const baseColor = paletteArray[hitValue] ?? themeRef.current.accent;
+        const depthFade = Math.max(0.25, 1 - corrected / maxDepth);
+        const sideFade = side === 1 ? 0.7 : 1;
+        ctx.strokeStyle = shadeByFactor(baseColor, depthFade * sideFade);
+        ctx.lineWidth = rayStep;
+        ctx.beginPath();
+        ctx.moveTo(column, drawStart);
+        ctx.lineTo(column, drawEnd);
+        ctx.stroke();
+      }
+
+      const impFrames = spriteRef.current.imp;
+      const enemySprite =
+        impFrames.length > 0 ? impFrames[Math.floor(now / 220) % impFrames.length] : undefined;
+      const itemSprites = spriteRef.current.items;
+
+      state.doom.items.forEach((item) => {
+        const color =
+          item.type === "health"
+            ? "rgba(74, 222, 128, 0.85)"
+            : item.type === "armor"
+              ? "rgba(56, 189, 248, 0.85)"
+              : "rgba(251, 191, 36, 0.85)";
+        drawBillboard(item.x, item.y, color, 0.55, 0.9, itemSprites[item.type]);
+      });
+
+      state.doom.enemies.forEach((enemy) => {
+        const healthTint = enemy.health <= 1 ? 0.6 : 0.85;
+        drawBillboard(
+          enemy.x,
+          enemy.y,
+          `rgba(248, 113, 113, ${healthTint})`,
+          1.05,
+          0.95,
+          enemySprite
+        );
+      });
+
+      const exitCenter = { x: exit.x + 0.5, y: exit.y + 0.5 };
+      const exitVector = {
+        x: exitCenter.x - player.x,
+        y: exitCenter.y - player.y
+      };
+      const exitDistance = Math.hypot(exitVector.x, exitVector.y);
+      const exitAngle = Math.atan2(exitVector.y, exitVector.x);
+      let diff = exitAngle - player.angle;
+      diff = ((diff + Math.PI) % (Math.PI * 2)) - Math.PI;
+      if (Math.abs(diff) < halfFov) {
+        const wallDistance = castRayDistance(exitAngle);
+        if (wallDistance > exitDistance - 0.2) {
+          const screenX = (0.5 + diff / fov) * width;
+          const spriteHeight = Math.min(height * 0.7, height / Math.max(0.2, exitDistance));
+          const spriteWidth = spriteHeight * 0.22;
+          ctx.save();
+          ctx.fillStyle = "rgba(248, 113, 113, 0.8)";
+          ctx.fillRect(
+            screenX - spriteWidth / 2,
+            height / 2 - spriteHeight / 2,
+            spriteWidth,
+            spriteHeight
+          );
+          ctx.restore();
+        }
+      }
+
+      ctx.save();
+      ctx.fillStyle = "rgba(5, 6, 12, 0.92)";
+      ctx.fillRect(0, height - hudHeight, width, hudHeight);
+      ctx.strokeStyle = "rgba(248, 113, 113, 0.45)";
+      ctx.strokeRect(0, height - hudHeight, width, hudHeight);
+      ctx.fillStyle = "rgba(248, 113, 113, 0.9)";
+      ctx.fillRect(0, height - hudHeight - 2, width, 2);
+      ctx.font = "12px 'Space Grotesk', system-ui, sans-serif";
+      ctx.fillStyle = "rgba(226, 232, 240, 0.95)";
+      ctx.fillText(`HEALTH ${state.doom.health}`, 14, height - hudHeight + 22);
+      ctx.fillText(`ARMOR ${state.doom.armor}`, 14, height - hudHeight + 44);
+      ctx.fillText(`AMMO ${state.doom.ammo}`, width * 0.45, height - hudHeight + 22);
+      ctx.fillText(
+        `TIME ${Math.max(0, Math.ceil(state.doom.timeLeft / 1000))}s`,
+        width * 0.45,
+        height - hudHeight + 44
+      );
+      const healthBarWidth = width * 0.32;
+      const armorBarWidth = width * 0.32;
+      ctx.fillStyle = "rgba(248, 113, 113, 0.35)";
+      ctx.fillRect(14, height - hudHeight + 28, healthBarWidth, 6);
+      ctx.fillStyle = "rgba(248, 113, 113, 0.9)";
+      ctx.fillRect(
+        14,
+        height - hudHeight + 28,
+        (healthBarWidth * state.doom.health) / 100,
+        6
+      );
+      ctx.fillStyle = "rgba(56, 189, 248, 0.35)";
+      ctx.fillRect(14, height - hudHeight + 50, armorBarWidth, 6);
+      ctx.fillStyle = "rgba(56, 189, 248, 0.9)";
+      ctx.fillRect(
+        14,
+        height - hudHeight + 50,
+        (armorBarWidth * state.doom.armor) / 100,
+        6
+      );
+      ctx.restore();
+
+      const gunWidth = width * 0.35;
+      const gunHeight = height * 0.18;
+      const gunX = width / 2 - gunWidth / 2;
+      const gunY = height - hudHeight - gunHeight * 0.35;
+      ctx.save();
+      ctx.fillStyle = "rgba(12, 14, 24, 0.9)";
+      ctx.fillRect(gunX, gunY, gunWidth, gunHeight);
+      ctx.fillStyle = "rgba(148, 163, 184, 0.85)";
+      ctx.fillRect(
+        gunX + gunWidth * 0.08,
+        gunY + gunHeight * 0.15,
+        gunWidth * 0.84,
+        gunHeight * 0.5
+      );
+      ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+      ctx.fillRect(gunX + gunWidth * 0.35, gunY - gunHeight * 0.1, gunWidth * 0.3, gunHeight * 0.2);
+      ctx.restore();
+
+      ctx.save();
+      ctx.strokeStyle = "rgba(248, 113, 113, 0.85)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(width / 2 - 10, height / 2);
+      ctx.lineTo(width / 2 + 10, height / 2);
+      ctx.moveTo(width / 2, height / 2 - 10);
+      ctx.lineTo(width / 2, height / 2 + 10);
+      ctx.stroke();
+      ctx.restore();
     } else {
       ctx.strokeStyle = themeRef.current.gridStrong;
       for (let y = 0; y < VISIBLE_ROWS; y += 1) {

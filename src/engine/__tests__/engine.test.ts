@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ARKANOID_TRIGGER_LINES,
+  DOOM_TRIGGER_LINES,
   createEmptyBoard,
   createInitialState,
   getDropInterval,
@@ -383,6 +384,60 @@ describe("engine", () => {
     const dropped = hardDrop(state);
     expect(dropped.mode).toBe("arkanoid");
     expect(dropped.arkanoidMeter).toBe(0);
+  });
+
+  it("charges the doom meter when lines clear", () => {
+    const board = createEmptyBoard();
+    board[BOARD_HEIGHT - 1] = Array(BOARD_WIDTH).fill(1);
+    for (let x = 3; x <= 6; x += 1) {
+      board[BOARD_HEIGHT - 1][x] = 0;
+    }
+    const state = makeState({
+      board,
+      doomMeter: 0,
+      active: {
+        type: "I",
+        rotation: 0,
+        position: { x: 3, y: 0 }
+      }
+    });
+    const dropped = hardDrop(state);
+    expect(dropped.doomMeter).toBe(1);
+  });
+
+  it("enters doom mode when the trigger is reached", () => {
+    const board = createEmptyBoard();
+    board[BOARD_HEIGHT - 1] = Array(BOARD_WIDTH).fill(1);
+    for (let x = 3; x <= 6; x += 1) {
+      board[BOARD_HEIGHT - 1][x] = 0;
+    }
+    const state = makeState({
+      board,
+      doomMeter: DOOM_TRIGGER_LINES - 1,
+      active: {
+        type: "I",
+        rotation: 0,
+        position: { x: 3, y: 0 }
+      }
+    });
+    const dropped = hardDrop(state);
+    expect(dropped.mode).toBe("doom");
+    expect(dropped.doomMeter).toBe(0);
+  });
+
+  it("exits doom mode when the timer expires", () => {
+    const base = createInitialState();
+    const state: GameState = {
+      ...base,
+      status: "running",
+      mode: "doom",
+      doom: {
+        ...base.doom,
+        timeLeft: 5
+      }
+    };
+    const next = tick(state, 10);
+    expect(next.mode).toBe("tetris");
   });
 
   it("exits arkanoid mode when the timer expires", () => {

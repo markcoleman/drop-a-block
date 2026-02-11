@@ -1,5 +1,6 @@
 import {
   ARKANOID_TRIGGER_LINES,
+  DOOM_TRIGGER_LINES,
   SPAWN_POSITION,
   SPRINT_TARGET_LINES,
   ULTRA_DURATION
@@ -15,6 +16,7 @@ import {
 } from "./rules";
 import { canMoveDown, movePiece, nextQueue, spawnPiece } from "./tetris";
 import { createArkanoidState, tickArkanoid } from "./arkanoid";
+import { createDoomState, createEmptyDoomState, tickDoom } from "./doom";
 import type { GameModifiers, GameState, PlayMode } from "./types";
 
 export const createInitialState = (
@@ -33,6 +35,7 @@ export const createInitialState = (
     level: 1,
     lines: 0,
     arkanoidMeter: 0,
+    doomMeter: 0,
     status: "start",
     mode: "tetris",
     playMode,
@@ -45,7 +48,8 @@ export const createInitialState = (
     lockDelay: 500,
     lockTimer: 0,
     lastClear: 0,
-    arkanoid: createArkanoidState()
+    arkanoid: createArkanoidState(),
+    doom: createEmptyDoomState()
   };
 };
 
@@ -68,7 +72,10 @@ const lockPiece = (state: GameState): GameState => {
   const level = updateLevel(totalLines);
   const { piece, queue } = spawnPiece(state.queue);
   const arkanoidMeter = state.arkanoidMeter + cleared;
-  const remainder = arkanoidMeter % ARKANOID_TRIGGER_LINES;
+  const doomMeter = state.doomMeter + cleared;
+  const arkanoidRemainder = arkanoidMeter % ARKANOID_TRIGGER_LINES;
+  const doomRemainder = doomMeter % DOOM_TRIGGER_LINES;
+  const doomReady = cleared > 0 && doomMeter >= DOOM_TRIGGER_LINES;
   const nextState: GameState = {
     ...state,
     board,
@@ -82,13 +89,25 @@ const lockPiece = (state: GameState): GameState => {
     fallAccumulator: 0,
     lockTimer: 0,
     lastClear: cleared,
-    arkanoidMeter: remainder
+    arkanoidMeter: arkanoidRemainder,
+    doomMeter: doomRemainder
   };
   if (state.playMode === "sprint" && totalLines >= state.targetLines) {
     return { ...nextState, status: "over", result: "win" };
   }
   if (!isValidPosition(nextState.board, nextState.active)) {
     return { ...nextState, status: "over", result: "lose" };
+  }
+  if (doomReady) {
+    const { board: doomBoard, doom } = createDoomState(nextState.board);
+    return {
+      ...nextState,
+      mode: "doom",
+      board: doomBoard,
+      doom,
+      fallAccumulator: 0,
+      lockTimer: 0
+    };
   }
   if (cleared > 0 && arkanoidMeter >= ARKANOID_TRIGGER_LINES) {
     return {
@@ -161,6 +180,20 @@ export const forceArkanoid = (state: GameState): GameState => {
   };
 };
 
+export const forceDoom = (state: GameState): GameState => {
+  if (state.status === "over") return state;
+  const base = state.status === "start" ? startGame(state) : state;
+  const { board, doom } = createDoomState(base.board);
+  return {
+    ...base,
+    mode: "doom",
+    board,
+    doom,
+    fallAccumulator: 0,
+    lockTimer: 0
+  };
+};
+
 const tickTetris = (state: GameState, deltaMs: number): GameState => {
   let next: GameState = { ...state, fallAccumulator: state.fallAccumulator + deltaMs };
   while (next.fallAccumulator >= next.dropInterval) {
@@ -185,11 +218,12 @@ export const tick = (state: GameState, deltaMs: number): GameState => {
   let nextState = state;
   if (state.playMode === "ultra") {
     const nextTimer = Math.max(0, state.modeTimer - deltaMs);
-    nextState = { ...state, modeTimer: nextTimer };
+    nextState = { ...nextState, modeTimer: nextTimer };
     if (nextTimer === 0) {
       return { ...nextState, status: "over", result: "win" };
     }
   }
+  if (nextState.mode === "doom") return tickDoom(nextState, deltaMs);
   if (nextState.mode === "arkanoid") return tickArkanoid(nextState, deltaMs);
   return tickTetris(nextState, deltaMs);
 };

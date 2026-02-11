@@ -432,9 +432,35 @@ input:focus-visible {
     radial-gradient(circle at 50% 100%, var(--accent-warm-glow), transparent 55%), #050a16;
 }
 
+.board-panel.doom {
+  border-color: color-mix(in srgb, var(--accent-warm) 70%, transparent);
+  box-shadow: 0 26px 60px rgba(12, 6, 5, 0.6);
+  background: radial-gradient(circle at 50% 15%, rgba(248, 113, 113, 0.35), transparent 55%),
+    radial-gradient(circle at 50% 100%, rgba(251, 146, 60, 0.35), transparent 60%), #05060d;
+  animation: boardPulse 1.6s ease-in-out infinite;
+}
+
 .board-panel.arkanoid::after {
   opacity: 0.7;
   transform: translateY(0);
+}
+
+.board-panel.doom::after {
+  opacity: 0.65;
+  transform: translateY(0);
+  background: linear-gradient(
+      180deg,
+      rgba(248, 113, 113, 0.28) 0%,
+      rgba(251, 146, 60, 0.18) 45%,
+      rgba(15, 23, 42, 0.6) 100%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.04),
+      rgba(255, 255, 255, 0.04) 2px,
+      transparent 2px,
+      transparent 6px
+    );
 }
 
 .board-panel::before {
@@ -472,6 +498,11 @@ input:focus-visible {
   background: var(--board-bg);
   box-shadow: 0 14px 32px rgba(2, 6, 23, 0.6),
     inset 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+  touch-action: none;
+}
+
+.board-panel.doom .game-canvas {
+  cursor: crosshair;
   touch-action: none;
 }
 
@@ -621,6 +652,16 @@ input:focus-visible {
   letter-spacing: 0.08em;
   font-size: 0.65rem;
   backdrop-filter: blur(8px);
+}
+
+.mode-banner.doom {
+  border-color: color-mix(in srgb, var(--accent-warm) 70%, transparent);
+  background: linear-gradient(
+      120deg,
+      rgba(248, 113, 113, 0.18),
+      rgba(15, 23, 42, 0.65)
+    ),
+    rgba(8, 12, 22, 0.8);
 }
 
 .mode-label {

@@ -79,4 +79,17 @@ describe("game actions", () => {
     const launched = applyAction(moved, "rotateCw");
     expect(launched.arkanoid.launchDelay).toBe(0);
   });
+
+  it("updates doom movement flags", () => {
+    const base = createInitialState();
+    const state: GameState = {
+      ...base,
+      status: "running",
+      mode: "doom"
+    };
+    const forward = applyAction(state, "doomForwardDown");
+    expect(forward.doom.input.forward).toBe(true);
+    const stopped = applyAction(forward, "doomForwardUp");
+    expect(stopped.doom.input.forward).toBe(false);
+  });
 });

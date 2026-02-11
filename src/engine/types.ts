@@ -10,7 +10,7 @@ export type Piece = {
 
 export type GameStatus = "start" | "running" | "paused" | "over";
 
-export type GameMode = "tetris" | "arkanoid";
+export type GameMode = "tetris" | "arkanoid" | "doom";
 
 export type PlayMode = "marathon" | "sprint" | "ultra";
 
@@ -60,6 +60,52 @@ export type ArkanoidState = {
   launchDelay: number;
 };
 
+export type DoomInput = {
+  forward: boolean;
+  back: boolean;
+  left: boolean;
+  right: boolean;
+};
+
+export type DoomEnemy = {
+  id: number;
+  x: number;
+  y: number;
+  health: number;
+  speed: number;
+};
+
+export type DoomItemType = "health" | "armor" | "ammo";
+
+export type DoomItem = {
+  id: number;
+  x: number;
+  y: number;
+  type: DoomItemType;
+};
+
+export type DoomState = {
+  player: {
+    x: number;
+    y: number;
+    angle: number;
+  };
+  input: DoomInput;
+  timeLeft: number;
+  exit: {
+    x: number;
+    y: number;
+  };
+  shotCooldown: number;
+  health: number;
+  armor: number;
+  ammo: number;
+  enemies: DoomEnemy[];
+  items: DoomItem[];
+  nextEntityId: number;
+  damageCooldown: number;
+};
+
 export type GameState = {
   board: number[][];
   active: Piece;
@@ -70,6 +116,7 @@ export type GameState = {
   level: number;
   lines: number;
   arkanoidMeter: number;
+  doomMeter: number;
   status: GameStatus;
   mode: GameMode;
   playMode: PlayMode;
@@ -83,6 +130,7 @@ export type GameState = {
   lockTimer: number;
   lastClear: number;
   arkanoid: ArkanoidState;
+  doom: DoomState;
 };
 
 export type RotationDirection = "cw" | "ccw";

@@ -123,6 +123,37 @@ export const useInput = ({
       if (!enabled || isEditableTarget(event.target)) {
         return;
       }
+      if (stateRef.current.mode === "doom") {
+        switch (event.code) {
+          case "KeyW":
+            event.preventDefault();
+            fireAction("doomForwardDown");
+            return;
+          case "KeyS":
+            event.preventDefault();
+            fireAction("doomBackDown");
+            return;
+          case "KeyA":
+            event.preventDefault();
+            fireAction("doomLeftDown");
+            return;
+          case "KeyD":
+            event.preventDefault();
+            fireAction("doomRightDown");
+            return;
+          case "Space":
+            event.preventDefault();
+            fireAction("doomShoot");
+            return;
+          default:
+            break;
+        }
+        const doomAction = getActionForKey(event.code);
+        if (doomAction && doomAction !== "pause") {
+          event.preventDefault();
+          return;
+        }
+      }
       const action = getActionForKey(event.code);
       if (!action) return;
       if (action === "hold" && !allowHold) return;
@@ -137,6 +168,28 @@ export const useInput = ({
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
+      if (stateRef.current.mode === "doom") {
+        switch (event.code) {
+          case "KeyW":
+            event.preventDefault();
+            fireAction("doomForwardUp");
+            return;
+          case "KeyS":
+            event.preventDefault();
+            fireAction("doomBackUp");
+            return;
+          case "KeyA":
+            event.preventDefault();
+            fireAction("doomLeftUp");
+            return;
+          case "KeyD":
+            event.preventDefault();
+            fireAction("doomRightUp");
+            return;
+          default:
+            break;
+        }
+      }
       const action = getActionForKey(event.code);
       if (!action) return;
       if (isEditableTarget(event.target)) return;

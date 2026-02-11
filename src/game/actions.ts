@@ -1,4 +1,5 @@
 import {
+  doomShoot,
   hardDrop,
   holdPiece,
   forceArkanoid,
@@ -7,6 +8,7 @@ import {
   movePaddle,
   pauseGame,
   rotatePiece,
+  setDoomInput,
   softDrop,
   startGame
 } from "../engine/engine";
@@ -21,7 +23,16 @@ export type Action =
   | "hardDrop"
   | "hold"
   | "pause"
-  | "debugArkanoid";
+  | "debugArkanoid"
+  | "doomForwardDown"
+  | "doomForwardUp"
+  | "doomBackDown"
+  | "doomBackUp"
+  | "doomLeftDown"
+  | "doomLeftUp"
+  | "doomRightDown"
+  | "doomRightUp"
+  | "doomShoot";
 
 export const canApplyAction = (state: GameState, action: Action): boolean => {
   if (action === "pause" || action === "debugArkanoid") return true;
@@ -38,6 +49,31 @@ export const applyAction = (state: GameState, action: Action): GameState => {
   }
 
   if (state.status !== "running") return state;
+
+  if (state.mode === "doom") {
+    switch (action) {
+      case "doomForwardDown":
+        return setDoomInput(state, { forward: true });
+      case "doomForwardUp":
+        return setDoomInput(state, { forward: false });
+      case "doomBackDown":
+        return setDoomInput(state, { back: true });
+      case "doomBackUp":
+        return setDoomInput(state, { back: false });
+      case "doomLeftDown":
+        return setDoomInput(state, { left: true });
+      case "doomLeftUp":
+        return setDoomInput(state, { left: false });
+      case "doomRightDown":
+        return setDoomInput(state, { right: true });
+      case "doomRightUp":
+        return setDoomInput(state, { right: false });
+      case "doomShoot":
+        return doomShoot(state);
+      default:
+        return state;
+    }
+  }
 
   if (state.mode === "arkanoid") {
     switch (action) {
