@@ -26,6 +26,7 @@ export { doomShoot, setDoomInput, turnDoom } from "./doom";
 
 export {
   createInitialState,
+  forceDoom,
   forceArkanoid,
   hardDrop,
   holdPiece,

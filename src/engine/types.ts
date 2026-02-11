@@ -67,6 +67,23 @@ export type DoomInput = {
   right: boolean;
 };
 
+export type DoomEnemy = {
+  id: number;
+  x: number;
+  y: number;
+  health: number;
+  speed: number;
+};
+
+export type DoomItemType = "health" | "armor" | "ammo";
+
+export type DoomItem = {
+  id: number;
+  x: number;
+  y: number;
+  type: DoomItemType;
+};
+
 export type DoomState = {
   player: {
     x: number;
@@ -80,6 +97,13 @@ export type DoomState = {
     y: number;
   };
   shotCooldown: number;
+  health: number;
+  armor: number;
+  ammo: number;
+  enemies: DoomEnemy[];
+  items: DoomItem[];
+  nextEntityId: number;
+  damageCooldown: number;
 };
 
 export type GameState = {

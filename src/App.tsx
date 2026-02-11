@@ -7,6 +7,7 @@ import {
   BOARD_WIDTH,
   DOOM_DURATION,
   DOOM_TRIGGER_LINES,
+  forceDoom,
   SPRINT_TARGET_LINES,
   getGhost,
   setPaddlePosition,
@@ -44,6 +45,7 @@ const ACTION_EFFECTS: Partial<
 };
 
 const CHEAT_CODE = "TETRIS";
+const DOOM_CODE = "DOOM";
 const CHEAT_TAP_TARGET = 5;
 
 const MODE_LABELS: Record<PlayMode, string> = {
@@ -453,25 +455,38 @@ export const App = () => {
       openSecretMenu();
       return;
     }
+    if (normalized === DOOM_CODE) {
+      applyState((prev) => forceDoom(prev));
+      setCheatInput("");
+      setCheatFeedback("idle");
+      setShowCheatEntry(false);
+      return;
+    }
     setCheatFeedback("error");
-  }, [cheatInput, openSecretMenu]);
+  }, [applyState, cheatInput, openSecretMenu]);
 
   useEffect(() => {
     const handleCheatKeys = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return;
       if (event.key.length !== 1) return;
       const next = `${cheatBufferRef.current}${event.key}`.toUpperCase().replace(/[^A-Z0-9]/g, "");
-      cheatBufferRef.current = next.slice(-CHEAT_CODE.length);
-      if (cheatBufferRef.current === CHEAT_CODE) {
+      const maxLen = Math.max(CHEAT_CODE.length, DOOM_CODE.length);
+      cheatBufferRef.current = next.slice(-maxLen);
+      if (cheatBufferRef.current.endsWith(CHEAT_CODE)) {
         cheatBufferRef.current = "";
         openSecretMenu();
+        return;
+      }
+      if (cheatBufferRef.current.endsWith(DOOM_CODE)) {
+        cheatBufferRef.current = "";
+        applyState((prev) => forceDoom(prev));
       }
     };
     window.addEventListener("keydown", handleCheatKeys);
     return () => {
       window.removeEventListener("keydown", handleCheatKeys);
     };
-  }, [openSecretMenu]);
+  }, [applyState, openSecretMenu]);
 
   const toggleSecretMode = useCallback(
     (mode: keyof GameModifiers) => {
@@ -901,7 +916,7 @@ export const App = () => {
                   <div className="mode-banner doom" aria-live="polite">
                     <span className="mode-label">Doom Run</span>
                     <span className="mode-timer">{doomSeconds}s</span>
-                    <span className="mode-hint">Find the exit. WASD + mouse to shoot.</span>
+                    <span className="mode-hint">Find the exit. WASD + mouse, click to shoot.</span>
                   </div>
                 )}
                 <div className="goals-merged">
@@ -1073,6 +1088,9 @@ export const App = () => {
                   <li>
                     <strong>Doom run</strong> triggers every {DOOM_TRIGGER_LINES} lines. You get{" "}
                     {Math.round(DOOM_DURATION / 1000)} seconds to clear a path to the exit with WASD + mouse.
+                  </li>
+                  <li>
+                    <strong>Doom pickups</strong> restore health, armor, and ammo. Enemies can drain your health.
                   </li>
                   <li>
                     <strong>Modes</strong> include Normal (Marathon), Sprint ({SPRINT_TARGET_LINES} lines),

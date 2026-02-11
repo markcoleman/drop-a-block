@@ -285,6 +285,7 @@ export const GameCanvas = ({
       const halfFov = fov / 2;
       const maxDepth = VISIBLE_ROWS + 2;
       const rayStep = 2;
+      const hudHeight = height * 0.2;
 
       const toBoardY = (gridY: number) => BOARD_HEIGHT - 1 - gridY;
       const getCellValue = (gridX: number, gridY: number) => {
@@ -347,6 +348,35 @@ export const GameCanvas = ({
               : (mapY - player.y + (1 - stepY) / 2) / (dirY || 1e-6);
         }
         return Math.max(0.1, distance);
+      };
+
+      const drawBillboard = (
+        entityX: number,
+        entityY: number,
+        color: string,
+        heightScale = 1,
+        widthScale = 0.35
+      ) => {
+        const vectorX = entityX - player.x;
+        const vectorY = entityY - player.y;
+        const distance = Math.hypot(vectorX, vectorY);
+        if (distance < 0.01) return;
+        let angle = Math.atan2(vectorY, vectorX);
+        let diff = angle - player.angle;
+        diff = ((diff + Math.PI) % (Math.PI * 2)) - Math.PI;
+        if (Math.abs(diff) > halfFov) return;
+        const wallDistance = castRayDistance(angle);
+        if (wallDistance < distance - 0.2) return;
+        const screenX = (0.5 + diff / fov) * width;
+        const spriteHeight = Math.min(height * 0.9, (height / distance) * heightScale);
+        const spriteWidth = spriteHeight * widthScale;
+        const spriteTop = height / 2 - spriteHeight / 2;
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.fillRect(screenX - spriteWidth / 2, spriteTop, spriteWidth, spriteHeight);
+        ctx.strokeStyle = "rgba(15, 23, 42, 0.6)";
+        ctx.strokeRect(screenX - spriteWidth / 2, spriteTop, spriteWidth, spriteHeight);
+        ctx.restore();
       };
 
       const ceiling = ctx.createLinearGradient(0, 0, 0, height * 0.6);
@@ -428,6 +458,21 @@ export const GameCanvas = ({
         ctx.stroke();
       }
 
+      state.doom.items.forEach((item) => {
+        const color =
+          item.type === "health"
+            ? "rgba(74, 222, 128, 0.85)"
+            : item.type === "armor"
+              ? "rgba(56, 189, 248, 0.85)"
+              : "rgba(251, 191, 36, 0.85)";
+        drawBillboard(item.x, item.y, color, 0.6, 0.22);
+      });
+
+      state.doom.enemies.forEach((enemy) => {
+        const healthTint = enemy.health <= 1 ? 0.6 : 0.85;
+        drawBillboard(enemy.x, enemy.y, `rgba(248, 113, 113, ${healthTint})`, 1, 0.32);
+      });
+
       const exitCenter = { x: exit.x + 0.5, y: exit.y + 0.5 };
       const exitVector = {
         x: exitCenter.x - player.x,
@@ -454,6 +499,63 @@ export const GameCanvas = ({
           ctx.restore();
         }
       }
+
+      ctx.save();
+      ctx.fillStyle = "rgba(5, 6, 12, 0.92)";
+      ctx.fillRect(0, height - hudHeight, width, hudHeight);
+      ctx.strokeStyle = "rgba(248, 113, 113, 0.45)";
+      ctx.strokeRect(0, height - hudHeight, width, hudHeight);
+      ctx.fillStyle = "rgba(248, 113, 113, 0.9)";
+      ctx.fillRect(0, height - hudHeight - 2, width, 2);
+      ctx.font = "12px 'Space Grotesk', system-ui, sans-serif";
+      ctx.fillStyle = "rgba(226, 232, 240, 0.95)";
+      ctx.fillText(`HEALTH ${state.doom.health}`, 14, height - hudHeight + 22);
+      ctx.fillText(`ARMOR ${state.doom.armor}`, 14, height - hudHeight + 44);
+      ctx.fillText(`AMMO ${state.doom.ammo}`, width * 0.45, height - hudHeight + 22);
+      ctx.fillText(
+        `TIME ${Math.max(0, Math.ceil(state.doom.timeLeft / 1000))}s`,
+        width * 0.45,
+        height - hudHeight + 44
+      );
+      const healthBarWidth = width * 0.32;
+      const armorBarWidth = width * 0.32;
+      ctx.fillStyle = "rgba(248, 113, 113, 0.35)";
+      ctx.fillRect(14, height - hudHeight + 28, healthBarWidth, 6);
+      ctx.fillStyle = "rgba(248, 113, 113, 0.9)";
+      ctx.fillRect(
+        14,
+        height - hudHeight + 28,
+        (healthBarWidth * state.doom.health) / 100,
+        6
+      );
+      ctx.fillStyle = "rgba(56, 189, 248, 0.35)";
+      ctx.fillRect(14, height - hudHeight + 50, armorBarWidth, 6);
+      ctx.fillStyle = "rgba(56, 189, 248, 0.9)";
+      ctx.fillRect(
+        14,
+        height - hudHeight + 50,
+        (armorBarWidth * state.doom.armor) / 100,
+        6
+      );
+      ctx.restore();
+
+      const gunWidth = width * 0.35;
+      const gunHeight = height * 0.18;
+      const gunX = width / 2 - gunWidth / 2;
+      const gunY = height - hudHeight - gunHeight * 0.35;
+      ctx.save();
+      ctx.fillStyle = "rgba(12, 14, 24, 0.9)";
+      ctx.fillRect(gunX, gunY, gunWidth, gunHeight);
+      ctx.fillStyle = "rgba(148, 163, 184, 0.85)";
+      ctx.fillRect(
+        gunX + gunWidth * 0.08,
+        gunY + gunHeight * 0.15,
+        gunWidth * 0.84,
+        gunHeight * 0.5
+      );
+      ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+      ctx.fillRect(gunX + gunWidth * 0.35, gunY - gunHeight * 0.1, gunWidth * 0.3, gunHeight * 0.2);
+      ctx.restore();
 
       ctx.save();
       ctx.strokeStyle = "rgba(248, 113, 113, 0.85)";

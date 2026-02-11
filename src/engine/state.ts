@@ -180,6 +180,20 @@ export const forceArkanoid = (state: GameState): GameState => {
   };
 };
 
+export const forceDoom = (state: GameState): GameState => {
+  if (state.status === "over") return state;
+  const base = state.status === "start" ? startGame(state) : state;
+  const { board, doom } = createDoomState(base.board);
+  return {
+    ...base,
+    mode: "doom",
+    board,
+    doom,
+    fallAccumulator: 0,
+    lockTimer: 0
+  };
+};
+
 const tickTetris = (state: GameState, deltaMs: number): GameState => {
   let next: GameState = { ...state, fallAccumulator: state.fallAccumulator + deltaMs };
   while (next.fallAccumulator >= next.dropInterval) {
