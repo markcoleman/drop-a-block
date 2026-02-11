@@ -151,6 +151,10 @@ export const GameCanvas = ({
 }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const hasPointerHandlers = Boolean(onPointerDown || onPointerMove || onPointerUp);
+  const spriteRef = useRef<{
+    imp: HTMLImageElement[];
+    items: Record<string, HTMLImageElement>;
+  }>({ imp: [], items: {} });
   const themeRef = useRef({
     board: "#0a0f1f",
     grid: "rgba(255,255,255,0.08)",
@@ -163,6 +167,23 @@ export const GameCanvas = ({
   });
   const clearRef = useRef<{ count: number; startedAt: number } | null>(null);
   const lastClearRef = useRef(state.lastClear);
+
+  useEffect(() => {
+    const base = import.meta.env.BASE_URL ?? "/";
+    const load = (name: string) => {
+      const img = new Image();
+      img.src = `${base}sprites/doom/${name}`;
+      return img;
+    };
+    spriteRef.current = {
+      imp: [load("imp_1.png"), load("imp_2.png")],
+      items: {
+        health: load("item_health.png"),
+        armor: load("item_armor.png"),
+        ammo: load("item_ammo.png")
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const styles = getComputedStyle(document.documentElement);
@@ -355,7 +376,8 @@ export const GameCanvas = ({
         entityY: number,
         color: string,
         heightScale = 1,
-        widthScale = 0.35
+        widthScale = 0.35,
+        sprite?: HTMLImageElement
       ) => {
         const vectorX = entityX - player.x;
         const vectorY = entityY - player.y;
@@ -369,13 +391,19 @@ export const GameCanvas = ({
         if (wallDistance < distance - 0.2) return;
         const screenX = (0.5 + diff / fov) * width;
         const spriteHeight = Math.min(height * 0.9, (height / distance) * heightScale);
-        const spriteWidth = spriteHeight * widthScale;
+        const spriteWidth = sprite
+          ? spriteHeight * (sprite.naturalWidth / sprite.naturalHeight) * widthScale
+          : spriteHeight * widthScale;
         const spriteTop = height / 2 - spriteHeight / 2;
         ctx.save();
-        ctx.fillStyle = color;
-        ctx.fillRect(screenX - spriteWidth / 2, spriteTop, spriteWidth, spriteHeight);
-        ctx.strokeStyle = "rgba(15, 23, 42, 0.6)";
-        ctx.strokeRect(screenX - spriteWidth / 2, spriteTop, spriteWidth, spriteHeight);
+        if (sprite && sprite.complete && sprite.naturalWidth > 0) {
+          ctx.drawImage(sprite, screenX - spriteWidth / 2, spriteTop, spriteWidth, spriteHeight);
+        } else {
+          ctx.fillStyle = color;
+          ctx.fillRect(screenX - spriteWidth / 2, spriteTop, spriteWidth, spriteHeight);
+          ctx.strokeStyle = "rgba(15, 23, 42, 0.6)";
+          ctx.strokeRect(screenX - spriteWidth / 2, spriteTop, spriteWidth, spriteHeight);
+        }
         ctx.restore();
       };
 
@@ -458,6 +486,11 @@ export const GameCanvas = ({
         ctx.stroke();
       }
 
+      const impFrames = spriteRef.current.imp;
+      const enemySprite =
+        impFrames.length > 0 ? impFrames[Math.floor(now / 220) % impFrames.length] : undefined;
+      const itemSprites = spriteRef.current.items;
+
       state.doom.items.forEach((item) => {
         const color =
           item.type === "health"
@@ -465,12 +498,19 @@ export const GameCanvas = ({
             : item.type === "armor"
               ? "rgba(56, 189, 248, 0.85)"
               : "rgba(251, 191, 36, 0.85)";
-        drawBillboard(item.x, item.y, color, 0.6, 0.22);
+        drawBillboard(item.x, item.y, color, 0.55, 0.9, itemSprites[item.type]);
       });
 
       state.doom.enemies.forEach((enemy) => {
         const healthTint = enemy.health <= 1 ? 0.6 : 0.85;
-        drawBillboard(enemy.x, enemy.y, `rgba(248, 113, 113, ${healthTint})`, 1, 0.32);
+        drawBillboard(
+          enemy.x,
+          enemy.y,
+          `rgba(248, 113, 113, ${healthTint})`,
+          1.05,
+          0.95,
+          enemySprite
+        );
       });
 
       const exitCenter = { x: exit.x + 0.5, y: exit.y + 0.5 };
