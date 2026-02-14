@@ -16,7 +16,12 @@ export {
 
 export { createEmptyBoard, getBlocks, isValidPosition } from "./board";
 
-export { getDropInterval } from "./rules";
+export {
+  getArkanoidTriggerLines,
+  getDoomTriggerLines,
+  getDropInterval,
+  getLockDelay
+} from "./rules";
 
 export { movePiece, rotatePiece, getGhost } from "./tetris";
 

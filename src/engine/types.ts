@@ -18,6 +18,10 @@ export type GameModifiers = {
   turbo: boolean;
   mirror: boolean;
   noGhost: boolean;
+  floaty: boolean;
+  freeHold: boolean;
+  arcadeRush: boolean;
+  party: boolean;
 };
 
 export type ArkanoidBall = {

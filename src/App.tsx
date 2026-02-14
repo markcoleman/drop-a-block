@@ -2,92 +2,53 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import clsx from "clsx";
 import {
-  ARKANOID_TRIGGER_LINES,
-  BOARD_HEIGHT,
   BOARD_WIDTH,
-  DOOM_DURATION,
-  DOOM_TRIGGER_LINES,
   forceDoom,
-  SPRINT_TARGET_LINES,
+  getArkanoidTriggerLines,
+  getDoomTriggerLines,
   getGhost,
   setPaddlePosition,
   startGame,
   turnDoom,
-  ULTRA_DURATION,
-  resetGame,
-  VISIBLE_ROWS
+  resetGame
 } from "./engine/engine";
 import { Controls } from "./components/Controls";
 import { GameCanvas, type DropTrail } from "./components/GameCanvas";
-import { MiniGrid } from "./components/MiniGrid";
-import { HighScores } from "./components/HighScores";
+import { GameOverOverlay } from "./components/GameOverOverlay";
+import { HudBar } from "./components/HudBar";
+import { MenuModal } from "./components/MenuModal";
+import { PauseOverlay } from "./components/PauseOverlay";
+import { QueuePanel } from "./components/QueuePanel";
+import { ScoreEntryModal } from "./components/ScoreEntryModal";
+import { StartOverlay } from "./components/StartOverlay";
+import { StatsPanel } from "./components/StatsPanel";
 import { loadGoalsState, loadScores, loadSettings, saveGoalsState, saveScore, saveSettings } from "./utils/storage";
-import { playClear, playLock, playMove, playRotate, setSfxMuted } from "./audio/sfx";
-import { SettingsPanel } from "./components/SettingsPanel";
-import { ArrowLeftIcon, CloseIcon, HelpIcon, PauseIcon, PlayIcon, SettingsIcon, TrophyIcon } from "./components/Icons";
+import { playClear, setSfxMuted } from "./audio/sfx";
 import { Action, canApplyAction } from "./game/actions";
+import { ACTION_EFFECTS } from "./game/actionEffects";
+import {
+  CHEAT_CODE,
+  CHEAT_TAP_TARGET,
+  DOOM_CODE,
+  isCheatMatch,
+  normalizeCheatInput,
+  updateCheatBuffer
+} from "./game/cheats";
 import { useInput } from "./game/input";
+import {
+  getUnlockedModes,
+  MODE_LABELS,
+  MODE_ORDER,
+  MODE_UNLOCKS,
+  orderModes,
+  SECRET_MODES
+} from "./game/modes";
 import { useGame } from "./game/useGame";
 import { evaluateGoals, getNextLevelTarget } from "./utils/goals";
 import type { GameModifiers, PlayMode } from "./engine/types";
+import { isEditableTarget } from "./utils/dom";
 import { getPalette } from "./ui/palettes";
-
-const ACTION_EFFECTS: Partial<
-  Record<Action, { sound?: () => void; haptics?: boolean }>
-> = {
-  left: { sound: playMove },
-  right: { sound: playMove },
-  down: { sound: playMove },
-  rotateCw: { sound: playRotate },
-  rotateCcw: { sound: playRotate },
-  hardDrop: { sound: playLock, haptics: true },
-  hold: { sound: playRotate }
-};
-
-const CHEAT_CODE = "TETRIS";
-const DOOM_CODE = "DOOM";
-const CHEAT_TAP_TARGET = 5;
-
-const MODE_LABELS: Record<PlayMode, string> = {
-  marathon: "Normal",
-  sprint: "Sprint",
-  ultra: "Ultra"
-};
-
-const MODE_OPTIONS: Array<{ id: PlayMode; label: string; desc: string }> = [
-  {
-    id: "marathon",
-    label: "Normal",
-    desc: "Classic endless climb with speed bumps every 10 lines."
-  },
-  {
-    id: "sprint",
-    label: "Sprint",
-    desc: `Clear ${SPRINT_TARGET_LINES} lines as fast as you can.`
-  },
-  {
-    id: "ultra",
-    label: "Ultra",
-    desc: `Score attack for ${Math.round(ULTRA_DURATION / 60000)} minutes.`
-  }
-];
-
-const MODE_UNLOCKS: Record<Exclude<PlayMode, "marathon">, { plays: number; label: string }> = {
-  sprint: { plays: 1, label: "Finish 1 game" },
-  ultra: { plays: 3, label: "Finish 3 games" }
-};
-
-const SECRET_MODES: Array<{ id: keyof GameModifiers; label: string; desc: string }> = [
-  { id: "turbo", label: "Turbo Gravity", desc: "Pieces fall 40% faster." },
-  { id: "mirror", label: "Mirror Controls", desc: "Left/right controls are swapped." },
-  { id: "noGhost", label: "No Ghost", desc: "Hide the landing preview." }
-];
-
-const isEditableTarget = (target: EventTarget | null) => {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  return target.isContentEditable || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
-};
+import type { CheatFeedback, MenuView, StartStep } from "./ui/types";
 
 export const App = () => {
   const { state, stateRef, applyState, dispatch } = useGame();
@@ -96,27 +57,28 @@ export const App = () => {
   const [goalsState, setGoalsState] = useState(loadGoalsState);
   const [initials, setInitials] = useState("");
   const [showScoreEntry, setShowScoreEntry] = useState(false);
-  const [menuView, setMenuView] = useState<
-    "none" | "settings" | "help" | "about" | "scores" | "secret"
-  >("none");
+  const [menuView, setMenuView] = useState<MenuView>("none");
   const [clearFlash, setClearFlash] = useState(false);
   const [dropTrail, setDropTrail] = useState<DropTrail | null>(null);
   const [comboCount, setComboCount] = useState(0);
   const [comboPulse, setComboPulse] = useState(0);
   const [isTouchMode, setIsTouchMode] = useState(false);
-  const [startStep, setStartStep] = useState<"main" | "mode">("main");
+  const [startStep, setStartStep] = useState<StartStep>("main");
   const [selectedMode, setSelectedMode] = useState<PlayMode>("marathon");
   const [showCheatEntry, setShowCheatEntry] = useState(false);
   const [cheatInput, setCheatInput] = useState("");
-  const [cheatFeedback, setCheatFeedback] = useState<"idle" | "error">("idle");
+  const [cheatFeedback, setCheatFeedback] = useState<CheatFeedback>("idle");
   const arkanoidSeconds = Math.ceil(state.arkanoid.timeLeft / 1000);
   const doomSeconds = Math.ceil(state.doom.timeLeft / 1000);
-  const linesToFlip = Math.max(0, ARKANOID_TRIGGER_LINES - state.arkanoidMeter);
-  const doomLinesToReady = Math.max(0, DOOM_TRIGGER_LINES - state.doomMeter);
+  const arkanoidTriggerLines = getArkanoidTriggerLines(state.modifiers);
+  const doomTriggerLines = getDoomTriggerLines(state.modifiers);
+  const linesToFlip = Math.max(0, arkanoidTriggerLines - state.arkanoidMeter);
+  const doomLinesToReady = Math.max(0, doomTriggerLines - state.doomMeter);
   const nextLevelTarget = getNextLevelTarget(state.level);
   const levelStart = (state.level - 1) * 10;
   const linesToNextLevel = Math.max(0, nextLevelTarget - state.lines);
-  const levelProgress = Math.min(1, (state.lines - levelStart) / 10);
+  const linesIntoLevel = state.lines - levelStart;
+  const levelProgress = Math.min(1, linesIntoLevel / 10);
   const palette = useMemo(() => getPalette(settings.palette), [settings.palette]);
   const highScore = scores[0]?.score ?? 0;
   const clearShake = !settings.reducedMotion && clearFlash && state.lastClear >= 2;
@@ -136,19 +98,20 @@ export const App = () => {
     []
   );
   const totalPlays = goalsState.plays ?? 0;
-  const unlockedModes = useMemo(() => {
-    const unlocked = new Set<PlayMode>(goalsState.unlockedModes ?? []);
-    unlocked.add("marathon");
-    if (totalPlays >= MODE_UNLOCKS.sprint.plays) unlocked.add("sprint");
-    if (totalPlays >= MODE_UNLOCKS.ultra.plays) unlocked.add("ultra");
-    return unlocked;
-  }, [goalsState.unlockedModes, totalPlays]);
+  const unlockedModes = useMemo(
+    () => getUnlockedModes(totalPlays, goalsState.unlockedModes),
+    [goalsState.unlockedModes, totalPlays]
+  );
   const activeModifiers = useMemo<GameModifiers>(() => {
     const secretModes = goalsState.secretModes ?? [];
     return {
       turbo: secretModes.includes("turbo"),
+      floaty: secretModes.includes("floaty"),
+      freeHold: secretModes.includes("freeHold"),
       mirror: secretModes.includes("mirror"),
-      noGhost: secretModes.includes("noGhost")
+      noGhost: secretModes.includes("noGhost"),
+      arcadeRush: secretModes.includes("arcadeRush"),
+      party: secretModes.includes("party")
     };
   }, [goalsState.secretModes]);
 
@@ -210,8 +173,7 @@ export const App = () => {
         unlocked.add("marathon");
         if (nextPlays >= MODE_UNLOCKS.sprint.plays) unlocked.add("sprint");
         if (nextPlays >= MODE_UNLOCKS.ultra.plays) unlocked.add("ultra");
-        const ordered: PlayMode[] = ["marathon", "sprint", "ultra"];
-        const nextModes = ordered.filter((mode) => unlocked.has(mode));
+        const nextModes = orderModes(unlocked);
         const sameModes =
           nextModes.length === prev.unlockedModes.length &&
           nextModes.every((mode, index) => mode === prev.unlockedModes[index]);
@@ -448,8 +410,13 @@ export const App = () => {
     }, 900);
   }, []);
 
+  const handleCheatInputChange = useCallback((value: string) => {
+    setCheatInput(value);
+    setCheatFeedback("idle");
+  }, []);
+
   const handleCheatSubmit = useCallback(() => {
-    const normalized = cheatInput.trim().toUpperCase();
+    const normalized = normalizeCheatInput(cheatInput);
     if (!normalized) return;
     if (normalized === CHEAT_CODE) {
       openSecretMenu();
@@ -469,15 +436,13 @@ export const App = () => {
     const handleCheatKeys = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return;
       if (event.key.length !== 1) return;
-      const next = `${cheatBufferRef.current}${event.key}`.toUpperCase().replace(/[^A-Z0-9]/g, "");
-      const maxLen = Math.max(CHEAT_CODE.length, DOOM_CODE.length);
-      cheatBufferRef.current = next.slice(-maxLen);
-      if (cheatBufferRef.current.endsWith(CHEAT_CODE)) {
+      cheatBufferRef.current = updateCheatBuffer(cheatBufferRef.current, event.key);
+      if (isCheatMatch(cheatBufferRef.current, CHEAT_CODE)) {
         cheatBufferRef.current = "";
         openSecretMenu();
         return;
       }
-      if (cheatBufferRef.current.endsWith(DOOM_CODE)) {
+      if (isCheatMatch(cheatBufferRef.current, DOOM_CODE)) {
         cheatBufferRef.current = "";
         applyState((prev) => forceDoom(prev));
       }
@@ -503,14 +468,30 @@ export const App = () => {
     [updateGoalsState]
   );
 
+  const shuffleFunModes = useCallback(() => {
+    updateGoalsState((prev) => {
+      const options = SECRET_MODES.map((mode) => mode.id);
+      if (options.length === 0) return prev;
+      const count = Math.floor(Math.random() * Math.min(3, options.length)) + 1;
+      const shuffled = [...options].sort(() => Math.random() - 0.5);
+      return { ...prev, secretModes: shuffled.slice(0, count) };
+    });
+  }, [updateGoalsState]);
+
+  const clearFunModes = useCallback(() => {
+    updateGoalsState((prev) => {
+      if (!prev.secretModes || prev.secretModes.length === 0) return prev;
+      return { ...prev, secretModes: [] };
+    });
+  }, [updateGoalsState]);
+
   const unlockMode = useCallback(
     (mode: PlayMode) => {
       updateGoalsState((prev) => {
         const current = new Set(prev.unlockedModes ?? []);
         current.add("marathon");
         current.add(mode);
-        const ordered: PlayMode[] = ["marathon", "sprint", "ultra"];
-        const nextModes = ordered.filter((entry) => current.has(entry));
+        const nextModes = orderModes(current);
         const sameModes =
           nextModes.length === prev.unlockedModes.length &&
           nextModes.every((entry, index) => entry === prev.unlockedModes[index]);
@@ -524,7 +505,7 @@ export const App = () => {
   const unlockAllModes = useCallback(() => {
     updateGoalsState((prev) => ({
       ...prev,
-      unlockedModes: ["marathon", "sprint", "ultra"]
+      unlockedModes: MODE_ORDER
     }));
   }, [updateGoalsState]);
 
@@ -545,6 +526,7 @@ export const App = () => {
     .padStart(2, "0");
   const sprintLinesLeft = Math.max(0, state.targetLines - state.lines);
   const modeLabel = MODE_LABELS[state.playMode];
+  const activeMenu = !showScoreEntry && menuView !== "none" ? menuView : null;
 
   const handleScoreSubmit = () => {
     const name = initials.trim().slice(0, 3).toUpperCase() || "AAA";
@@ -563,64 +545,22 @@ export const App = () => {
     <div className={clsx("app", { "touch-enabled": isTouchMode })}>
       <main className="layout">
         <section className="game-panel">
-          <div className="hud-bar">
-            <div className="hud-main">
-              <div className="hud-title">
-                <span className="eyebrow">Drop-a-Block</span>
-                <div className="hud-mode">
-                  <span className="hud-mode-label">{modeLabel}</span>
-                  {state.playMode === "sprint" && (
-                    <span className="hud-mode-sub">{sprintLinesLeft} lines left</span>
-                  )}
-                  {state.playMode === "ultra" && (
-                    <span className="hud-mode-sub">
-                      {modeMinutes}:{modeSeconds} remaining
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="hud-stats">
-                <div className="hud-card">
-                  <span className="label">Score</span>
-                  <strong>{state.score.toLocaleString()}</strong>
-                </div>
-                <div className="hud-card">
-                  <span className="label">Level</span>
-                  <strong>{state.level}</strong>
-                </div>
-                <div className="hud-card">
-                  <span className="label">Lines</span>
-                  <strong>{state.lines}</strong>
-                </div>
-                {state.mode === "tetris" && (
-                  <div className="hud-card">
-                    <span className="label">Doom</span>
-                    <strong>{doomLinesToReady} lines</strong>
-                  </div>
-                )}
-                <div className="hud-card">
-                  <span className="label">High</span>
-                  <strong>{highScore.toLocaleString()}</strong>
-                </div>
-              </div>
-            </div>
-            <div className="hud-actions">
-              <button
-                className="icon-button hud-button"
-                onClick={() => handleAction("pause")}
-                aria-label={state.status === "paused" ? "Resume" : "Pause"}
-              >
-                <PauseIcon />
-              </button>
-              <button
-                className="icon-button hud-button"
-                onClick={() => setMenuView("settings")}
-                aria-label="Open settings"
-              >
-                <SettingsIcon />
-              </button>
-            </div>
-          </div>
+          <HudBar
+            status={state.status}
+            mode={state.mode}
+            playMode={state.playMode}
+            modeLabel={modeLabel}
+            sprintLinesLeft={sprintLinesLeft}
+            modeMinutes={modeMinutes}
+            modeSeconds={modeSeconds}
+            score={state.score}
+            level={state.level}
+            lines={state.lines}
+            doomLinesToReady={doomLinesToReady}
+            highScore={highScore}
+            onPause={() => handleAction("pause")}
+            onOpenSettings={() => setMenuView("settings")}
+          />
           <div className="game-stage">
             <div
               className={clsx("board-panel", {
@@ -628,6 +568,7 @@ export const App = () => {
                 "clear-shake": clearShake,
                 arkanoid: state.mode === "arkanoid",
                 doom: state.mode === "doom",
+                party: state.modifiers.party,
                 "clear-lines": clearFlash,
                 [`clear-lines-${state.lastClear}`]: clearFlash
               })}
@@ -653,346 +594,73 @@ export const App = () => {
                 </div>
               )}
               {state.status === "start" && (
-                <div className="overlay start-overlay">
-                  <div className="start-menu">
-                    <div className="start-menu-header" onClick={handleCheatTap}>
-                      <p className="eyebrow">Start Menu</p>
-                      <h2>{startStep === "mode" ? "Choose your mode" : "Ready to drop?"}</h2>
-                      <p className="subtitle">
-                        {startStep === "mode"
-                          ? "Normal is unlocked by default. Other modes unlock after you play."
-                          : "Start a run, then pick the game mode type."}
-                      </p>
-                    </div>
-                    {startStep === "mode" ? (
-                      <>
-                        <div className="mode-select">
-                          <p className="eyebrow">Game Mode</p>
-                          <div className="mode-options">
-                            {MODE_OPTIONS.map((mode) => {
-                              const isUnlocked = unlockedModes.has(mode.id);
-                              const requirement =
-                                mode.id === "marathon"
-                                  ? null
-                                  : MODE_UNLOCKS[mode.id as Exclude<PlayMode, "marathon">];
-                              const progress = requirement
-                                ? Math.min(totalPlays, requirement.plays)
-                                : 0;
-                              return (
-                                <button
-                                  key={mode.id}
-                                  type="button"
-                                  className={clsx("mode-option", {
-                                    active: selectedMode === mode.id,
-                                    locked: !isUnlocked
-                                  })}
-                                  onClick={() => isUnlocked && setSelectedMode(mode.id)}
-                                  disabled={!isUnlocked}
-                                >
-                                  <span className="mode-option-title">{mode.label}</span>
-                                  <span className="mode-option-desc">{mode.desc}</span>
-                                  {!isUnlocked && requirement && (
-                                    <span className="mode-option-lock">
-                                      Locked · {requirement.label} ({progress}/{requirement.plays})
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        <div className="mode-unlock-progress muted">
-                          Games finished: {totalPlays}
-                        </div>
-                        <div className="start-menu-actions">
-                          <button
-                            className="menu-button primary"
-                            onClick={handleLaunch}
-                            disabled={!unlockedModes.has(selectedMode)}
-                          >
-                            <span className="menu-icon">
-                              <PlayIcon />
-                            </span>
-                            <span className="menu-copy">
-                              <strong>Launch {MODE_LABELS[selectedMode]}</strong>
-                              <span className="menu-desc">Drop into level {state.level}.</span>
-                            </span>
-                          </button>
-                          <button className="menu-button" onClick={() => setStartStep("main")}>
-                            <span className="menu-icon">
-                              <ArrowLeftIcon />
-                            </span>
-                            <span className="menu-copy">
-                              <strong>Back</strong>
-                              <span className="menu-desc">Return to the start menu.</span>
-                            </span>
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="start-menu-actions">
-                        <button className="menu-button primary" onClick={handleStartMenu}>
-                          <span className="menu-icon">
-                            <PlayIcon />
-                          </span>
-                          <span className="menu-copy">
-                            <strong>Start Game</strong>
-                            <span className="menu-desc">Pick your mode next.</span>
-                          </span>
-                        </button>
-                        <button className="menu-button" onClick={() => setMenuView("scores")}>
-                          <span className="menu-icon">
-                            <TrophyIcon />
-                          </span>
-                          <span className="menu-copy">
-                            <strong>High Scores</strong>
-                            <span className="menu-desc">Your top runs and rankings.</span>
-                          </span>
-                        </button>
-                        <button className="menu-button" onClick={() => setMenuView("settings")}>
-                          <span className="menu-icon">
-                            <SettingsIcon />
-                          </span>
-                          <span className="menu-copy">
-                            <strong>Adjust Settings</strong>
-                            <span className="menu-desc">Sound, theme, and speed controls.</span>
-                          </span>
-                        </button>
-                        <button className="menu-button" onClick={() => setMenuView("help")}>
-                          <span className="menu-icon">
-                            <HelpIcon />
-                          </span>
-                          <span className="menu-copy">
-                            <strong>Help</strong>
-                            <span className="menu-desc">Controls, tactics, and pro tips.</span>
-                          </span>
-                        </button>
-                        <button className="menu-button" onClick={() => setMenuView("about")}>
-                          <span className="menu-icon">
-                            <HelpIcon />
-                          </span>
-                          <span className="menu-copy">
-                            <strong>About</strong>
-                            <span className="menu-desc">Board size, colors, and rules.</span>
-                          </span>
-                        </button>
-                      </div>
-                    )}
-                    {showCheatEntry && (
-                      <div className="cheat-entry">
-                        <p className="eyebrow">Cheat Code</p>
-                        <div className="cheat-row">
-                          <input
-                            value={cheatInput}
-                            onChange={(event) => {
-                              setCheatInput(event.target.value);
-                              if (cheatFeedback !== "idle") setCheatFeedback("idle");
-                            }}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") handleCheatSubmit();
-                            }}
-                            placeholder="Enter code"
-                            aria-label="Cheat code"
-                            autoComplete="off"
-                          />
-                          <button className="primary" onClick={handleCheatSubmit}>
-                            Enter
-                          </button>
-                        </div>
-                        {cheatFeedback === "error" && (
-                          <span className="cheat-feedback">Nope. Try again.</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <StartOverlay
+                  startStep={startStep}
+                  selectedMode={selectedMode}
+                  unlockedModes={unlockedModes}
+                  totalPlays={totalPlays}
+                  startLevel={state.level}
+                  showCheatEntry={showCheatEntry}
+                  cheatInput={cheatInput}
+                  cheatFeedback={cheatFeedback}
+                  onCheatTap={handleCheatTap}
+                  onCheatInputChange={handleCheatInputChange}
+                  onCheatSubmit={handleCheatSubmit}
+                  onSelectMode={setSelectedMode}
+                  onLaunch={handleLaunch}
+                  onStartMenu={handleStartMenu}
+                  onBack={() => setStartStep("main")}
+                  onOpenScores={() => setMenuView("scores")}
+                  onOpenSettings={() => setMenuView("settings")}
+                  onOpenHelp={() => setMenuView("help")}
+                  onOpenAbout={() => setMenuView("about")}
+                />
               )}
               {state.status === "paused" && (
-                <div className="overlay">
-                  <h2>Paused</h2>
-                  <p>Press P or tap resume.</p>
-                  <button className="primary" onClick={() => handleAction("pause")}>
-                    Resume
-                  </button>
-                </div>
+                <PauseOverlay onResume={() => handleAction("pause")} />
               )}
               {state.status === "over" && (
-                <div className="overlay">
-                  <div className="game-over-panel">
-                    <div>
-                      <p className="eyebrow">Run Summary</p>
-                      <h2>{state.result === "win" ? "Mode Complete" : "Game Over"}</h2>
-                      <p className="muted">
-                        {state.result === "win"
-                          ? `${modeLabel} wrapped with ${state.score.toLocaleString()} points.`
-                          : `Final score ${state.score.toLocaleString()}.`}
-                      </p>
-                    </div>
-                    <div className="summary-grid">
-                      <div className="summary-card">
-                        <span className="label">Score</span>
-                        <strong>{state.score.toLocaleString()}</strong>
-                      </div>
-                      <div className="summary-card">
-                        <span className="label">Lines</span>
-                        <strong>{state.lines}</strong>
-                      </div>
-                      <div className="summary-card">
-                        <span className="label">Level</span>
-                        <strong>{state.level}</strong>
-                      </div>
-                      <div className="summary-card">
-                        <span className="label">Mode</span>
-                        <strong>{modeLabel}</strong>
-                      </div>
-                    </div>
-                    <div className="summary-actions">
-                      <button type="button" className="primary" onClick={handleRestart}>
-                        Play Again
-                      </button>
-                      <button type="button" className="ghost" onClick={handleBackToMenu}>
-                        Back to Menu
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <GameOverOverlay
+                  result={state.result}
+                  modeLabel={modeLabel}
+                  score={state.score}
+                  lines={state.lines}
+                  level={state.level}
+                  onRestart={handleRestart}
+                  onBackToMenu={handleBackToMenu}
+                />
               )}
             </div>
             <div className="side-panel left">
-              <div className="panel stats-panel">
-                <h2>Stats</h2>
-                <div className="stat-grid">
-                  <div className="stat-card">
-                    <span className="label">Score</span>
-                    <strong>{state.score.toLocaleString()}</strong>
-                  </div>
-                  <div className="stat-card compact">
-                    <span className="label">Level</span>
-                    <strong>{state.level}</strong>
-                  </div>
-                  <div className="stat-card compact">
-                    <span className="label">Lines</span>
-                    <strong>{state.lines}</strong>
-                  </div>
-                  {state.mode === "tetris" && (
-                    <div className="stat-card">
-                      <span className="label">Flip in</span>
-                      <strong>{linesToFlip} lines</strong>
-                    </div>
-                  )}
-                  {state.mode === "tetris" && (
-                    <div className="stat-card">
-                      <span className="label">Doom</span>
-                      <strong>{doomLinesToReady} lines</strong>
-                    </div>
-                  )}
-                  <div className="stat-card">
-                    <span className="label">Mode</span>
-                    <strong>{modeLabel}</strong>
-                  </div>
-                  {state.playMode === "sprint" && (
-                    <div className="stat-card">
-                      <span className="label">Lines left</span>
-                      <strong>{sprintLinesLeft}</strong>
-                    </div>
-                  )}
-                  {state.playMode === "ultra" && (
-                    <div className="stat-card">
-                      <span className="label">Time left</span>
-                      <strong>
-                        {modeMinutes}:{modeSeconds}
-                      </strong>
-                    </div>
-                  )}
-                </div>
-                {state.mode === "arkanoid" && state.status === "running" && (
-                  <div className="mode-banner" aria-live="polite">
-                    <span className="mode-label">Arkanoid</span>
-                    <span className="mode-timer">{arkanoidSeconds}s</span>
-                    <span className="mode-hint">Break blocks for points.</span>
-                  </div>
-                )}
-                {state.mode === "doom" && state.status === "running" && (
-                  <div className="mode-banner doom" aria-live="polite">
-                    <span className="mode-label">Doom Run</span>
-                    <span className="mode-timer">{doomSeconds}s</span>
-                    <span className="mode-hint">Find the exit. WASD + mouse, click to shoot.</span>
-                  </div>
-                )}
-                <div className="goals-merged">
-                  <div className="goal-progress">
-                    <div className="goal-header">
-                      <span>Next level</span>
-                      <strong>{linesToNextLevel} lines</strong>
-                    </div>
-                    <div
-                      className="progress-track"
-                      role="progressbar"
-                      aria-valuemin={0}
-                      aria-valuemax={10}
-                      aria-valuenow={state.lines - levelStart}
-                    >
-                      <div
-                        className="progress-fill"
-                        style={{ width: `${Math.round(levelProgress * 100)}%` }}
-                      />
-                    </div>
-                    <span className="muted">
-                      Level {state.level + 1} unlocks at {nextLevelTarget} lines.
-                    </span>
-                  </div>
-                  <div className="goal-list" aria-live="polite">
-                    {displayGoals.map((item) => (
-                      <div
-                        key={item.goal.id}
-                        className={clsx("goal-card", { completed: item.achieved })}
-                      >
-                        <span className="goal-title">{item.goal.label}</span>
-                        <div className="goal-meta">
-                          <span>
-                            {item.achieved
-                              ? "Completed"
-                              : `${item.value.toLocaleString()} / ${item.goal.target.toLocaleString()}`}
-                          </span>
-                          <span>{Math.round(item.progress * 100)}%</span>
-                        </div>
-                        <div className="progress-track">
-                          <div
-                            className="progress-fill"
-                            style={{ width: `${Math.round(item.progress * 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <StatsPanel
+                score={state.score}
+                level={state.level}
+                lines={state.lines}
+                modeLabel={modeLabel}
+                mode={state.mode}
+                playMode={state.playMode}
+                sprintLinesLeft={sprintLinesLeft}
+                modeMinutes={modeMinutes}
+                modeSeconds={modeSeconds}
+                linesToFlip={linesToFlip}
+                doomLinesToReady={doomLinesToReady}
+                arkanoidSeconds={arkanoidSeconds}
+                doomSeconds={doomSeconds}
+                status={state.status}
+                linesToNextLevel={linesToNextLevel}
+                levelProgress={levelProgress}
+                linesIntoLevel={linesIntoLevel}
+                nextLevelTarget={nextLevelTarget}
+                displayGoals={displayGoals}
+              />
             </div>
             <div className="side-panel right">
-              {settings.holdEnabled ? (
-                <div className="panel">
-                  <h2>Hold</h2>
-                  <MiniGrid type={state.hold} label="Hold piece" palette={palette} />
-                </div>
-              ) : (
-                <div className="panel panel-muted">
-                  <h2>Hold</h2>
-                  <p className="muted">Disabled in settings.</p>
-                </div>
-              )}
-              <div className="panel">
-                <h2>Next</h2>
-                <div className="next-queue">
-                  {nextQueue.map((type, index) => (
-                    <MiniGrid
-                      key={`${type}-${index}`}
-                      type={type}
-                      label={`Next piece ${index + 1}`}
-                      palette={palette}
-                    />
-                  ))}
-                </div>
-              </div>
+              <QueuePanel
+                holdEnabled={settings.holdEnabled}
+                holdPiece={state.hold}
+                nextQueue={nextQueue}
+                palette={palette}
+              />
             </div>
           </div>
           {isTouchMode && state.mode !== "doom" && (
@@ -1015,177 +683,27 @@ export const App = () => {
       </main>
 
       {showScoreEntry && (
-        <div className="modal" role="dialog" aria-modal="true">
-          <div className="modal-card">
-            <h2>New High Score</h2>
-            <p>Enter your initials (3 letters).</p>
-            <input
-              value={initials}
-              onChange={(event) => setInitials(event.target.value)}
-              maxLength={3}
-              placeholder="AAA"
-              aria-label="Initials"
-            />
-            <button className="primary" onClick={handleScoreSubmit}>
-              Save Score
-            </button>
-          </div>
-        </div>
+        <ScoreEntryModal initials={initials} onChange={setInitials} onSave={handleScoreSubmit} />
       )}
 
-      {menuView !== "none" && !showScoreEntry && (
-        <div className="modal" role="dialog" aria-modal="true">
-          <div className="modal-card modal-large">
-            <div className="modal-header">
-              <h2>
-                {menuView === "settings"
-                  ? "Adjust Settings"
-                  : menuView === "help"
-                    ? "Help"
-                    : menuView === "scores"
-                      ? "High Scores"
-                      : menuView === "secret"
-                        ? "Secret Menu"
-                        : "About"}
-              </h2>
-              <button
-                className="icon-button"
-                onClick={() => setMenuView("none")}
-                aria-label="Close"
-              >
-                <CloseIcon />
-              </button>
-            </div>
-            {menuView === "settings" ? (
-              <SettingsPanel
-                settings={settings}
-                onChange={setSettings}
-                className="embedded"
-              />
-            ) : menuView === "help" ? (
-              <div className="help-panel">
-                <p className="muted">
-                  Tight rotations and fast drops win. Use Hold to save a rescue piece, and watch the next queue.
-                </p>
-                <ul className="help-list">
-                  <li>
-                    <strong>Rotate</strong> with Z / X or the on-screen rotate buttons.
-                  </li>
-                  <li>
-                    <strong>Move/Drop</strong> by holding the on-screen arrows for repeat.
-                  </li>
-                  <li>
-                    <strong>Hard drop</strong> with Space or the hard drop button.
-                  </li>
-                  {settings.holdEnabled && (
-                    <li>
-                      <strong>Hold</strong> with C / Shift to swap the current tetromino.
-                    </li>
-                  )}
-                  <li>
-                    <strong>Arkanoid mode</strong> triggers every {ARKANOID_TRIGGER_LINES} lines for 30 seconds.
-                  </li>
-                  <li>
-                    <strong>Doom run</strong> triggers every {DOOM_TRIGGER_LINES} lines. You get{" "}
-                    {Math.round(DOOM_DURATION / 1000)} seconds to clear a path to the exit with WASD + mouse.
-                  </li>
-                  <li>
-                    <strong>Doom pickups</strong> restore health, armor, and ammo. Enemies can drain your health.
-                  </li>
-                  <li>
-                    <strong>Modes</strong> include Normal (Marathon), Sprint ({SPRINT_TARGET_LINES} lines),
-                    and Ultra ({Math.round(ULTRA_DURATION / 60000)} minutes).
-                  </li>
-                  <li>
-                    <strong>Pause</strong> anytime with P or Esc.
-                  </li>
-                </ul>
-              </div>
-            ) : menuView === "scores" ? (
-              <HighScores scores={scores} className="embedded" />
-            ) : menuView === "secret" ? (
-              <div className="secret-panel">
-                <p className="muted">Secret console unlocked. Changes apply to your next run.</p>
-                <div className="secret-section">
-                  <h3>Mode Unlocks</h3>
-                  <div className="secret-grid">
-                    {MODE_OPTIONS.filter((mode) => mode.id !== "marathon").map((mode) => {
-                      const isUnlocked = unlockedModes.has(mode.id);
-                      const requirement = MODE_UNLOCKS[mode.id as Exclude<PlayMode, "marathon">];
-                      const progress = Math.min(totalPlays, requirement.plays);
-                      return (
-                        <button
-                          key={mode.id}
-                          type="button"
-                          className={clsx("secret-toggle", { active: isUnlocked })}
-                          onClick={() => unlockMode(mode.id)}
-                          disabled={isUnlocked}
-                        >
-                          <span className="secret-title">
-                            {mode.label}
-                            <span className="secret-status">
-                              {isUnlocked ? "Unlocked" : `Locked · ${progress}/${requirement.plays}`}
-                            </span>
-                          </span>
-                          <span className="secret-desc">{mode.desc}</span>
-                          {!isUnlocked && (
-                            <span className="secret-meta">{requirement.label}</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="secret-actions">
-                    <button className="secret-action" onClick={unlockAllModes}>
-                      Unlock All Modes
-                    </button>
-                    <button className="secret-action" onClick={resetModeUnlocks}>
-                      Reset Mode Unlocks
-                    </button>
-                  </div>
-                </div>
-                <div className="secret-section">
-                  <h3>Fun Modes</h3>
-                  <div className="secret-grid">
-                    {SECRET_MODES.map((mode) => (
-                      <button
-                        key={mode.id}
-                        type="button"
-                        className={clsx("secret-toggle", {
-                          active: Boolean(activeModifiers[mode.id])
-                        })}
-                        aria-pressed={Boolean(activeModifiers[mode.id])}
-                        onClick={() => toggleSecretMode(mode.id)}
-                      >
-                        <span className="secret-title">
-                          {mode.label}
-                          <span className="secret-status">
-                            {activeModifiers[mode.id] ? "On" : "Off"}
-                          </span>
-                        </span>
-                        <span className="secret-desc">{mode.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="help-panel">
-                <p className="muted about-copy">
-                  Board size {BOARD_WIDTH}x{VISIBLE_ROWS} with {BOARD_HEIGHT - VISIBLE_ROWS} hidden spawn rows.
-                  Colors are mapped per tetromino.
-                </p>
-                <div className="legend about-legend">
-                  {Object.entries(palette).map(([key, value]) => (
-                    <span key={key} style={{ background: value }}>
-                      {key}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {activeMenu && (
+        <MenuModal
+          view={activeMenu}
+          onClose={() => setMenuView("none")}
+          settings={settings}
+          onSettingsChange={setSettings}
+          scores={scores}
+          palette={palette}
+          unlockedModes={unlockedModes}
+          totalPlays={totalPlays}
+          activeModifiers={activeModifiers}
+          onToggleSecretMode={toggleSecretMode}
+          onShuffleFunModes={shuffleFunModes}
+          onClearFunModes={clearFunModes}
+          onUnlockMode={unlockMode}
+          onUnlockAllModes={unlockAllModes}
+          onResetModeUnlocks={resetModeUnlocks}
+        />
       )}
     </div>
   );

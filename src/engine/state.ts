@@ -1,15 +1,12 @@
-import {
-  ARKANOID_TRIGGER_LINES,
-  DOOM_TRIGGER_LINES,
-  SPAWN_POSITION,
-  SPRINT_TARGET_LINES,
-  ULTRA_DURATION
-} from "./constants";
+import { SPAWN_POSITION, SPRINT_TARGET_LINES, ULTRA_DURATION } from "./constants";
 import { createEmptyBoard, isValidPosition } from "./board";
 import {
   DEFAULT_MODIFIERS,
   clearLines,
+  getArkanoidTriggerLines,
+  getDoomTriggerLines,
   getDropInterval,
+  getLockDelay,
   imprintBoard,
   scoreLineClear,
   updateLevel
@@ -45,7 +42,7 @@ export const createInitialState = (
     modifiers,
     dropInterval: getDropInterval(1, modifiers),
     fallAccumulator: 0,
-    lockDelay: 500,
+    lockDelay: getLockDelay(modifiers),
     lockTimer: 0,
     lastClear: 0,
     arkanoid: createArkanoidState(),
@@ -71,11 +68,13 @@ const lockPiece = (state: GameState): GameState => {
   const totalLines = state.lines + cleared;
   const level = updateLevel(totalLines);
   const { piece, queue } = spawnPiece(state.queue);
+  const arkanoidTrigger = getArkanoidTriggerLines(state.modifiers);
+  const doomTrigger = getDoomTriggerLines(state.modifiers);
   const arkanoidMeter = state.arkanoidMeter + cleared;
   const doomMeter = state.doomMeter + cleared;
-  const arkanoidRemainder = arkanoidMeter % ARKANOID_TRIGGER_LINES;
-  const doomRemainder = doomMeter % DOOM_TRIGGER_LINES;
-  const doomReady = cleared > 0 && doomMeter >= DOOM_TRIGGER_LINES;
+  const arkanoidRemainder = arkanoidMeter % arkanoidTrigger;
+  const doomRemainder = doomMeter % doomTrigger;
+  const doomReady = cleared > 0 && doomMeter >= doomTrigger;
   const nextState: GameState = {
     ...state,
     board,
@@ -109,7 +108,7 @@ const lockPiece = (state: GameState): GameState => {
       lockTimer: 0
     };
   }
-  if (cleared > 0 && arkanoidMeter >= ARKANOID_TRIGGER_LINES) {
+  if (cleared > 0 && arkanoidMeter >= arkanoidTrigger) {
     return {
       ...nextState,
       mode: "arkanoid",
@@ -141,7 +140,8 @@ export const hardDrop = (state: GameState): GameState => {
 };
 
 export const holdPiece = (state: GameState): GameState => {
-  if (!state.canHold) return state;
+  if (!state.canHold && !state.modifiers.freeHold) return state;
+  const allowRepeatHold = state.modifiers.freeHold;
   if (state.hold) {
     const swapped = {
       type: state.hold,
@@ -153,7 +153,7 @@ export const holdPiece = (state: GameState): GameState => {
       ...state,
       active: swapped,
       hold: state.active.type,
-      canHold: false,
+      canHold: allowRepeatHold,
       lockTimer: 0
     };
   }
@@ -163,7 +163,7 @@ export const holdPiece = (state: GameState): GameState => {
     hold: state.active.type,
     active: piece,
     queue,
-    canHold: false,
+    canHold: allowRepeatHold,
     lockTimer: 0
   };
 };

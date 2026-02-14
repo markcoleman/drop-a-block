@@ -1,18 +1,43 @@
-import { BOARD_HEIGHT, BOARD_WIDTH, TETROMINO_INDEX } from "./constants";
+import {
+  ARKANOID_TRIGGER_LINES,
+  BOARD_HEIGHT,
+  BOARD_WIDTH,
+  DOOM_TRIGGER_LINES,
+  TETROMINO_INDEX
+} from "./constants";
 import { cloneBoard, getBlocks } from "./board";
 import type { GameModifiers, Piece } from "./types";
 
 export const DEFAULT_MODIFIERS: GameModifiers = {
   turbo: false,
   mirror: false,
-  noGhost: false
+  noGhost: false,
+  floaty: false,
+  freeHold: false,
+  arcadeRush: false,
+  party: false
 };
 
 export const getDropInterval = (level: number, modifiers: GameModifiers = DEFAULT_MODIFIERS) => {
   const base = Math.max(100, 1000 - (level - 1) * 75);
-  if (!modifiers.turbo) return base;
-  return Math.max(60, Math.round(base * 0.6));
+  const turboFactor = modifiers.turbo ? 0.6 : 1;
+  const floatyFactor = modifiers.floaty ? 1.25 : 1;
+  const interval = Math.round(base * turboFactor * floatyFactor);
+  const minInterval = modifiers.turbo ? 60 : 100;
+  return Math.max(minInterval, interval);
 };
+
+export const getLockDelay = (modifiers: GameModifiers = DEFAULT_MODIFIERS) => {
+  const base = 500;
+  if (modifiers.floaty) return Math.round(base * 1.4);
+  return base;
+};
+
+export const getArkanoidTriggerLines = (modifiers: GameModifiers = DEFAULT_MODIFIERS) =>
+  modifiers.arcadeRush ? Math.max(6, Math.round(ARKANOID_TRIGGER_LINES * 0.6)) : ARKANOID_TRIGGER_LINES;
+
+export const getDoomTriggerLines = (modifiers: GameModifiers = DEFAULT_MODIFIERS) =>
+  modifiers.arcadeRush ? Math.max(8, Math.round(DOOM_TRIGGER_LINES * 0.6)) : DOOM_TRIGGER_LINES;
 
 export const scoreLineClear = (lines: number, level: number) => {
   const table = [0, 100, 300, 500, 800];
