@@ -2,14 +2,9 @@ import { useCallback, useEffect, useRef } from "react";
 import type { MutableRefObject } from "react";
 import type { GameState, GameStatus } from "../engine/types";
 import type { Settings } from "../utils/storage";
+import { isEditableTarget } from "../utils/dom";
 import type { Action } from "./actions";
 import { getActionForKey, isRepeatableAction, RepeatableAction } from "./controls";
-
-const isEditableTarget = (target: EventTarget | null) => {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  return target.isContentEditable || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
-};
 
 type TimerKey = RepeatableAction | `${RepeatableAction}Interval`;
 

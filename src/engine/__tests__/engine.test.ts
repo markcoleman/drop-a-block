@@ -507,6 +507,17 @@ describe("engine", () => {
     expect(swapped).toBe(state);
   });
 
+  it("allows repeat hold when freeHold is enabled", () => {
+    const base = createInitialState();
+    const state = makeState({
+      modifiers: { ...base.modifiers, freeHold: true },
+      canHold: false
+    });
+    const held = holdPiece(state);
+    expect(held).not.toBe(state);
+    expect(held.canHold).toBe(true);
+  });
+
   it("slows drop interval but never below 100ms", () => {
     expect(getDropInterval(1)).toBe(1000);
     expect(getDropInterval(20)).toBe(100);
@@ -533,7 +544,15 @@ describe("engine", () => {
   });
 
   it("applies turbo modifier to drop interval with a 60ms floor", () => {
-    const modifiers = { turbo: true, mirror: false, noGhost: false };
+    const modifiers = {
+      turbo: true,
+      mirror: false,
+      noGhost: false,
+      floaty: false,
+      freeHold: false,
+      arcadeRush: false,
+      party: false
+    };
     expect(getDropInterval(1, modifiers)).toBe(600);
     expect(getDropInterval(20, modifiers)).toBe(60);
   });
