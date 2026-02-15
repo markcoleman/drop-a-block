@@ -69,6 +69,8 @@ export const App = () => {
   const [cheatFeedback, setCheatFeedback] = useState<CheatFeedback>("idle");
   const arkanoidSeconds = Math.ceil(state.arkanoid.timeLeft / 1000);
   const doomSeconds = Math.ceil(state.doom.timeLeft / 1000);
+  const bonusSeconds = Math.ceil(state.bonusTimeLeft / 1000);
+  const bonusActive = state.mode === "tetris" && state.bonusTimeLeft > 0;
   const doomTriggerLines = getDoomTriggerLines(state.modifiers);
   const doomLinesToReady = Math.max(0, doomTriggerLines - state.doomMeter);
   const nextLevelTarget = getNextLevelTarget(state.level);
@@ -565,6 +567,7 @@ export const App = () => {
                 "clear-shake": clearShake,
                 arkanoid: state.mode === "arkanoid",
                 doom: state.mode === "doom",
+                bonus: bonusActive,
                 party: state.modifiers.party,
                 "clear-lines": clearFlash,
                 [`clear-lines-${state.lastClear}`]: clearFlash
@@ -588,6 +591,12 @@ export const App = () => {
               {comboActive && state.status === "running" && (
                 <div className="combo-badge" aria-live="polite">
                   Combo x{comboCount}
+                </div>
+              )}
+              {bonusActive && state.status === "running" && (
+                <div className="bonus-timer" aria-live="polite">
+                  <span className="bonus-label">Bonus</span>
+                  <strong>{bonusSeconds}s</strong>
                 </div>
               )}
               {state.status === "start" && (

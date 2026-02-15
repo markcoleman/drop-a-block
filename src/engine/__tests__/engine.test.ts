@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   ARKANOID_TRIGGER_LINES,
   DOOM_TRIGGER_LINES,
+  BONUS_MULTIPLIER_START,
+  BONUS_MULTIPLIER_STEP,
+  BONUS_SPEED_FACTOR,
+  BONUS_TIME_PER_TRIGGER,
+  BONUS_TRIGGER_LINES,
   createEmptyBoard,
   createInitialState,
   getDropInterval,
@@ -93,6 +98,72 @@ describe("engine", () => {
     const dropped = hardDrop(state);
     expect(dropped.lines).toBe(2);
     expect(dropped.board[BOARD_HEIGHT - 1][0]).toBe(2);
+  });
+
+  it("activates bonus mode when four lines clear at once", () => {
+    const board = createEmptyBoard();
+    for (let y = BOARD_HEIGHT - 1; y >= BOARD_HEIGHT - BONUS_TRIGGER_LINES; y -= 1) {
+      board[y] = Array(BOARD_WIDTH).fill(1);
+    }
+    const state = makeState({
+      board,
+      active: {
+        type: "O",
+        rotation: 0,
+        position: { x: 4, y: 0 }
+      }
+    });
+    const dropped = hardDrop(state);
+    expect(dropped.bonusTimeLeft).toBe(BONUS_TIME_PER_TRIGGER);
+    expect(dropped.bonusMultiplier).toBeCloseTo(
+      BONUS_MULTIPLIER_START + BONUS_MULTIPLIER_STEP * BONUS_TRIGGER_LINES
+    );
+  });
+
+  it("extends bonus time on another four-line clear", () => {
+    const board = createEmptyBoard();
+    for (let y = BOARD_HEIGHT - 1; y >= BOARD_HEIGHT - BONUS_TRIGGER_LINES; y -= 1) {
+      board[y] = Array(BOARD_WIDTH).fill(1);
+    }
+    const state = makeState({
+      board,
+      bonusTimeLeft: 5_000,
+      bonusMultiplier: 1.6,
+      active: {
+        type: "O",
+        rotation: 0,
+        position: { x: 4, y: 0 }
+      }
+    });
+    const dropped = hardDrop(state);
+    expect(dropped.bonusTimeLeft).toBe(5_000 + BONUS_TIME_PER_TRIGGER);
+    expect(dropped.bonusMultiplier).toBeGreaterThan(state.bonusMultiplier);
+  });
+
+  it("awards extra score when bonus mode is active", () => {
+    const board = createEmptyBoard();
+    board[BOARD_HEIGHT - 1] = Array(BOARD_WIDTH).fill(1);
+    const baseState = makeState({
+      board,
+      active: {
+        type: "O",
+        rotation: 0,
+        position: { x: 4, y: 0 }
+      }
+    });
+    const bonusState = makeState({
+      board,
+      bonusTimeLeft: 4_000,
+      bonusMultiplier: 1.5,
+      active: {
+        type: "O",
+        rotation: 0,
+        position: { x: 4, y: 0 }
+      }
+    });
+    const baseDrop = hardDrop(baseState);
+    const bonusDrop = hardDrop(bonusState);
+    expect(bonusDrop.score).toBeGreaterThan(baseDrop.score);
   });
 
   it("hard drops to the floor", () => {
@@ -240,6 +311,22 @@ describe("engine", () => {
       fallAccumulator: 0
     });
     const next = tick(state, 10);
+    expect(next.active.position.y).toBe(1);
+  });
+
+  it("drops faster while bonus mode is active", () => {
+    const state = makeState({
+      board: createEmptyBoard(),
+      active: {
+        type: "I",
+        rotation: 1,
+        position: { x: 4, y: 0 }
+      },
+      dropInterval: 1000,
+      fallAccumulator: 0,
+      bonusTimeLeft: 5_000
+    });
+    const next = tick(state, Math.ceil(1000 * BONUS_SPEED_FACTOR));
     expect(next.active.position.y).toBe(1);
   });
 

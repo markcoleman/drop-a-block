@@ -121,6 +121,8 @@ export type GameState = {
   lines: number;
   arkanoidMeter: number;
   doomMeter: number;
+  bonusTimeLeft: number;
+  bonusMultiplier: number;
   status: GameStatus;
   mode: GameMode;
   playMode: PlayMode;

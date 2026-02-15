@@ -457,6 +457,16 @@ input:focus-visible {
     linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(8, 12, 24, 0.55));
 }
 
+.board-panel.bonus:not(.arkanoid):not(.doom) {
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: var(--shadow-lg), 0 0 36px var(--accent-glow);
+}
+
+.board-panel.bonus:not(.arkanoid):not(.doom)::after {
+  opacity: 0.4;
+  transform: translateY(0);
+}
+
 .board-panel.arkanoid::after {
   opacity: 0.7;
   transform: translateY(0);
@@ -584,6 +594,33 @@ input:focus-visible {
   box-shadow: var(--shadow-glow);
   pointer-events: none;
   animation: comboPop 240ms var(--ease-out);
+}
+
+.bonus-timer {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(5, 8, 18, 0.6);
+  border: 1px solid var(--panel-quiet-border);
+  color: var(--text);
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  box-shadow: var(--shadow-xs);
+}
+
+.bonus-timer strong {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  font-family: var(--font-display);
 }
 
 .game-canvas {
@@ -1576,6 +1613,15 @@ input[type="radio"] {
   .panel {
     padding: 12px;
     border-radius: var(--radius-md);
+  }
+  .bonus-timer {
+    top: 10px;
+    padding: 4px 8px;
+    font-size: 0.65rem;
+    gap: 6px;
+  }
+  .bonus-timer strong {
+    font-size: 0.75rem;
   }
   .start-menu {
     padding: var(--space-3);
