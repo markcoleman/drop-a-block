@@ -40,16 +40,15 @@ const countByMatcher = (directoryPath, matcher) => walkFiles(directoryPath, matc
 
 const sourceCount = countByMatcher(
   path.join(root, "src"),
-  (filePath) => filePath.endsWith(".ts") || filePath.endsWith(".tsx"),
+  (filePath) => filePath.endsWith(".ts") || filePath.endsWith(".tsx")
 );
-const testCount = countByMatcher(
-  path.join(root, "src"),
-  (filePath) => /\.test\.(ts|tsx)$/.test(filePath),
+const testCount = countByMatcher(path.join(root, "src"), (filePath) =>
+  /\.test\.(ts|tsx)$/.test(filePath)
 );
 const docsCount = countByMatcher(path.join(root, "docs"), (filePath) => filePath.endsWith(".md"));
 const workflowCount = countByMatcher(
   path.join(root, ".github/workflows"),
-  (filePath) => filePath.endsWith(".yml") || filePath.endsWith(".yaml"),
+  (filePath) => filePath.endsWith(".yml") || filePath.endsWith(".yaml")
 );
 
 const generatedBlock = [
@@ -58,14 +57,16 @@ const generatedBlock = [
   `- Test files (\`src/**/*.test.{ts,tsx}\`): ${testCount}`,
   `- Docs files (\`docs/**/*.md\`): ${docsCount}`,
   `- Workflow files (\`.github/workflows/*.{yml,yaml}\`): ${workflowCount}`,
-  "<!-- generated:end -->",
+  "<!-- generated:end -->"
 ].join("\n");
 
 const currentText = fs.readFileSync(progressPath, "utf8");
 const blockPattern = /<!-- generated:start -->[\s\S]*?<!-- generated:end -->/;
 
 if (!blockPattern.test(currentText)) {
-  console.error("docs:refresh failed: generated block markers are missing in docs/project/progress.md");
+  console.error(
+    "docs:refresh failed: generated block markers are missing in docs/project/progress.md"
+  );
   process.exit(1);
 }
 

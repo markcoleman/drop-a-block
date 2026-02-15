@@ -53,12 +53,7 @@ export const ARKANOID_TOP_BOUNDARY = 0;
 export const ARKANOID_BALL_RADIUS = 0.32;
 export const ARKANOID_BALL_START_OFFSET = 0.8;
 
-export const ARKANOID_POWERUP_TYPES: ArkanoidPowerupType[] = [
-  "skinny",
-  "laser",
-  "wide",
-  "multi"
-];
+export const ARKANOID_POWERUP_TYPES: ArkanoidPowerupType[] = ["skinny", "laser", "wide", "multi"];
 
 export const TETROMINOES: Record<TetrominoType, Vec2[][]> = {
   I: [
