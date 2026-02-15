@@ -12,7 +12,7 @@ it("calls onStartMenu from main screen", async () => {
     <StartOverlay
       startStep="main"
       selectedMode="marathon"
-      unlockedModes={new Set(["marathon"])}
+      unlockedModes={new Set(["marathon"] as const)}
       totalPlays={0}
       startLevel={1}
       showCheatEntry={false}
@@ -40,7 +40,7 @@ it("calls onStartMenu from main screen", async () => {
 const createProps = (overrides: Partial<ComponentProps<typeof StartOverlay>> = {}) => ({
   startStep: "main" as const,
   selectedMode: "marathon" as const,
-  unlockedModes: new Set(["marathon"]),
+  unlockedModes: new Set(["marathon"] as const),
   totalPlays: 0,
   startLevel: 1,
   showCheatEntry: false,
@@ -69,7 +69,7 @@ it("renders mode selection with locks", async () => {
       {...createProps({
         startStep: "mode",
         selectedMode: "sprint",
-        unlockedModes: new Set(["marathon"]),
+        unlockedModes: new Set(["marathon"] as const),
         onSelectMode,
         onLaunch
       })}
@@ -79,7 +79,7 @@ it("renders mode selection with locks", async () => {
   const modeSection = screen.getByText("Game Mode").closest(".mode-select");
   if (!modeSection) throw new Error("Missing mode selection section");
 
-  const sprintButton = within(modeSection).getByRole("button", { name: /Sprint/i });
+  const sprintButton = within(modeSection as HTMLElement).getByRole("button", { name: /Sprint/i });
   expect(sprintButton).toBeDisabled();
 
   const user = userEvent.setup();
@@ -88,7 +88,7 @@ it("renders mode selection with locks", async () => {
   expect(onSelectMode).not.toHaveBeenCalled();
   expect(screen.getByRole("button", { name: /Launch Sprint/i })).toBeDisabled();
 
-  await user.click(within(modeSection).getByRole("button", { name: /Normal/i }));
+  await user.click(within(modeSection as HTMLElement).getByRole("button", { name: /Normal/i }));
   expect(onSelectMode).toHaveBeenCalledWith("marathon");
 });
 
