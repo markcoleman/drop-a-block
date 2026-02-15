@@ -1,6 +1,7 @@
 # Design Tokens
 
 **Typography**
+
 ```
 --font-body
 --font-display
@@ -15,6 +16,7 @@
 ```
 
 **Spacing**
+
 ```
 --space-1
 --space-2
@@ -28,6 +30,7 @@
 ```
 
 **Radii**
+
 ```
 --radius-xs
 --radius-sm
@@ -38,6 +41,7 @@
 ```
 
 **Shadows**
+
 ```
 --shadow-xs
 --shadow-sm
@@ -47,6 +51,7 @@
 ```
 
 **Motion**
+
 ```
 --transition-fast
 --transition-medium
@@ -55,6 +60,7 @@
 ```
 
 **Core Colors**
+
 ```
 --bg
 --bg-elevated
@@ -77,6 +83,7 @@
 ```
 
 **Board + FX**
+
 ```
 --board-bg
 --board-grid
@@ -85,6 +92,7 @@
 ```
 
 **Aliases**
+
 ```
 --panel
 --panel-strong

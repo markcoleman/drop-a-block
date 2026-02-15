@@ -26,7 +26,10 @@ export const GOALS: Goal[] = [
   { id: "level-15", label: "Reach level 15", type: "level", target: 15 }
 ];
 
-export const getGoalValue = (goal: Goal, state: { score: number; lines: number; level: number }) => {
+export const getGoalValue = (
+  goal: Goal,
+  state: { score: number; lines: number; level: number }
+) => {
   if (goal.type === "lines") return state.lines;
   if (goal.type === "level") return state.level;
   return state.score;

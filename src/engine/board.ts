@@ -12,10 +12,9 @@ export const getBlocks = (piece: Piece) =>
     y: block.y + piece.position.y
   }));
 
-const isInsideBoard = (pos: Vec2) =>
-  pos.x >= 0 && pos.x < BOARD_WIDTH && pos.y < BOARD_HEIGHT;
+const isInsideBoard = (pos: Vec2) => pos.x >= 0 && pos.x < BOARD_WIDTH && pos.y < BOARD_HEIGHT;
 
 export const isValidPosition = (board: number[][], piece: Piece) =>
-  getBlocks(piece).every((block) =>
-    isInsideBoard(block) && (block.y < 0 || board[block.y][block.x] === 0)
+  getBlocks(piece).every(
+    (block) => isInsideBoard(block) && (block.y < 0 || board[block.y][block.x] === 0)
   );

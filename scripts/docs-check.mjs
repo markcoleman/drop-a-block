@@ -34,7 +34,7 @@ const requiredDocs = [
   "docs/project/progress.md",
   "docs/project/tech-debt.md",
   "docs/decisions/README.md",
-  "docs/codex/assets/capability-gap.md",
+  "docs/codex/assets/capability-gap.md"
 ];
 
 for (const relativePath of requiredDocs) {
@@ -63,7 +63,7 @@ for (const scriptName of ["dev", "build", "test", "docs:check", "docs:refresh"])
 
 if (agents) {
   const commandMatches = [...agents.matchAll(/`npm run ([a-zA-Z0-9:-]+)`/g)].map(
-    (match) => match[1],
+    (match) => match[1]
   );
   if (agents.includes("`npm test`")) {
     commandMatches.push("test");
@@ -93,7 +93,10 @@ if (agents) {
 
 const progress = readFile("docs/project/progress.md");
 if (progress) {
-  if (!progress.includes("<!-- generated:start -->") || !progress.includes("<!-- generated:end -->")) {
+  if (
+    !progress.includes("<!-- generated:start -->") ||
+    !progress.includes("<!-- generated:end -->")
+  ) {
     errors.push("docs/project/progress.md must include generated block markers.");
   }
 }
