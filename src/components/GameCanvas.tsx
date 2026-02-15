@@ -128,11 +128,19 @@ const drawGhostTile = (
   color: string
 ) => {
   ctx.save();
-  ctx.globalAlpha = 0.4;
-  ctx.setLineDash([size * 0.3, size * 0.2]);
-  ctx.lineWidth = Math.max(1, size * 0.08);
-  ctx.strokeStyle = toRgba(parseHex(color), 0.35);
-  roundedRect(ctx, x + size * 0.08, y + size * 0.08, size * 0.84, size * 0.84, size * 0.2);
+  ctx.globalAlpha = 0.6;
+  ctx.setLineDash([size * 0.3, size * 0.18]);
+  ctx.lineWidth = Math.max(1, size * 0.1);
+  ctx.shadowColor = toRgba(parseHex(color), 0.35);
+  ctx.shadowBlur = size * 0.18;
+  ctx.strokeStyle = toRgba(parseHex(color), 0.55);
+  roundedRect(ctx, x + size * 0.06, y + size * 0.06, size * 0.88, size * 0.88, size * 0.22);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.setLineDash([]);
+  ctx.lineWidth = Math.max(1, size * 0.05);
+  ctx.strokeStyle = toRgba(parseHex("#ffffff"), 0.25);
+  roundedRect(ctx, x + size * 0.12, y + size * 0.12, size * 0.76, size * 0.76, size * 0.18);
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.restore();

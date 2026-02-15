@@ -13,17 +13,17 @@ export const QueuePanel = ({ holdEnabled, holdPiece, nextQueue, palette }: Queue
   return (
     <>
       {holdEnabled ? (
-        <div className="panel">
+        <div className="panel hold-panel">
           <h2>Hold</h2>
           <MiniGrid type={holdPiece} label="Hold piece" palette={palette} />
         </div>
       ) : (
-        <div className="panel panel-muted">
+        <div className="panel panel-muted hold-panel">
           <h2>Hold</h2>
           <p className="muted">Disabled in settings.</p>
         </div>
       )}
-      <div className="panel">
+      <div className="panel next-panel">
         <h2>Next</h2>
         <div className="next-queue">
           {nextQueue.map((type, index) => (

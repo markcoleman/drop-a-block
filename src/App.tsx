@@ -4,7 +4,6 @@ import clsx from "clsx";
 import {
   BOARD_WIDTH,
   forceDoom,
-  getArkanoidTriggerLines,
   getDoomTriggerLines,
   getGhost,
   setPaddlePosition,
@@ -70,9 +69,7 @@ export const App = () => {
   const [cheatFeedback, setCheatFeedback] = useState<CheatFeedback>("idle");
   const arkanoidSeconds = Math.ceil(state.arkanoid.timeLeft / 1000);
   const doomSeconds = Math.ceil(state.doom.timeLeft / 1000);
-  const arkanoidTriggerLines = getArkanoidTriggerLines(state.modifiers);
   const doomTriggerLines = getDoomTriggerLines(state.modifiers);
-  const linesToFlip = Math.max(0, arkanoidTriggerLines - state.arkanoidMeter);
   const doomLinesToReady = Math.max(0, doomTriggerLines - state.doomMeter);
   const nextLevelTarget = getNextLevelTarget(state.level);
   const levelStart = (state.level - 1) * 10;
@@ -633,17 +630,8 @@ export const App = () => {
             </div>
             <div className="side-panel left">
               <StatsPanel
-                score={state.score}
                 level={state.level}
-                lines={state.lines}
-                modeLabel={modeLabel}
                 mode={state.mode}
-                playMode={state.playMode}
-                sprintLinesLeft={sprintLinesLeft}
-                modeMinutes={modeMinutes}
-                modeSeconds={modeSeconds}
-                linesToFlip={linesToFlip}
-                doomLinesToReady={doomLinesToReady}
                 arkanoidSeconds={arkanoidSeconds}
                 doomSeconds={doomSeconds}
                 status={state.status}

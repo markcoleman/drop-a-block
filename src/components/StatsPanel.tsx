@@ -1,20 +1,10 @@
 import clsx from "clsx";
-import type { ReactNode } from "react";
-import type { GameMode, GameStatus, PlayMode } from "../engine/types";
+import type { GameMode, GameStatus } from "../engine/types";
 import type { GoalProgress } from "../utils/goals";
 
 type StatsPanelProps = {
-  score: number;
   level: number;
-  lines: number;
-  modeLabel: string;
   mode: GameMode;
-  playMode: PlayMode;
-  sprintLinesLeft: number;
-  modeMinutes: number;
-  modeSeconds: string;
-  linesToFlip: number;
-  doomLinesToReady: number;
   arkanoidSeconds: number;
   doomSeconds: number;
   status: GameStatus;
@@ -25,25 +15,9 @@ type StatsPanelProps = {
   displayGoals: GoalProgress[];
 };
 
-const StatCard = ({ label, value, className }: { label: string; value: ReactNode; className?: string }) => (
-  <div className={clsx("stat-card", className)}>
-    <span className="label">{label}</span>
-    <strong>{value}</strong>
-  </div>
-);
-
 export const StatsPanel = ({
-  score,
   level,
-  lines,
-  modeLabel,
   mode,
-  playMode,
-  sprintLinesLeft,
-  modeMinutes,
-  modeSeconds,
-  linesToFlip,
-  doomLinesToReady,
   arkanoidSeconds,
   doomSeconds,
   status,
@@ -55,19 +29,7 @@ export const StatsPanel = ({
 }: StatsPanelProps) => {
   return (
     <div className="panel stats-panel">
-      <h2>Stats</h2>
-      <div className="stat-grid">
-        <StatCard label="Score" value={score.toLocaleString()} />
-        <StatCard label="Level" value={level} className="compact" />
-        <StatCard label="Lines" value={lines} className="compact" />
-        {mode === "tetris" && <StatCard label="Flip in" value={`${linesToFlip} lines`} />}
-        {mode === "tetris" && <StatCard label="Doom" value={`${doomLinesToReady} lines`} />}
-        <StatCard label="Mode" value={modeLabel} />
-        {playMode === "sprint" && <StatCard label="Lines left" value={sprintLinesLeft} />}
-        {playMode === "ultra" && (
-          <StatCard label="Time left" value={`${modeMinutes}:${modeSeconds}`} />
-        )}
-      </div>
+      <h2>Progress</h2>
       {mode === "arkanoid" && status === "running" && (
         <div className="mode-banner" aria-live="polite">
           <span className="mode-label">Arkanoid</span>
