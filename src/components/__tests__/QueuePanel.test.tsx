@@ -10,7 +10,7 @@ it("shows disabled copy when hold is off", () => {
       holdEnabled={false}
       holdPiece={null}
       nextQueue={["I", "O", "T"]}
-      palette={getPalette("default")}
+      palette={getPalette("default", "dark")}
     />
   );
 

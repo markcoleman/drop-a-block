@@ -8,6 +8,14 @@ import { SettingsPanel } from "../SettingsPanel";
 const baseSettings: Settings = {
   theme: "dark",
   palette: "default",
+  language: "en",
+  customTheme: {
+    name: "Custom Theme",
+    baseTheme: "liquid2026",
+    colors: {},
+    assets: {},
+    piecePalette: {}
+  },
   reducedMotion: false,
   sound: true,
   showHud: true,
@@ -43,6 +51,9 @@ it("updates settings when controls change", async () => {
 
   await user.click(screen.getByLabelText(/mobile controls/i));
   expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ mobileControls: false }));
+
+  fireEvent.change(screen.getByLabelText(/language/i), { target: { value: "es" } });
+  expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ language: "es" }));
 
   fireEvent.change(screen.getByLabelText(/DAS/i), { target: { value: "200" } });
   expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ das: 200 }));

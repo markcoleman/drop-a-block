@@ -10,6 +10,14 @@ import { MenuModal } from "../MenuModal";
 const baseSettings: Settings = {
   theme: "dark",
   palette: "default",
+  language: "en",
+  customTheme: {
+    name: "Custom Theme",
+    baseTheme: "liquid2026",
+    colors: {},
+    assets: {},
+    piecePalette: {}
+  },
   reducedMotion: false,
   sound: true,
   showHud: true,
@@ -34,7 +42,7 @@ const createBaseProps = () => ({
   settings: baseSettings,
   onSettingsChange: vi.fn(),
   scores: [{ name: "ACE", score: 2500, lines: 12, level: 2, date: "2024-01-01" }],
-  palette: getPalette("default"),
+  palette: getPalette("default", "dark"),
   unlockedModes: new Set<PlayMode>(["marathon"]),
   totalPlays: 0,
   activeModifiers: baseModifiers,
@@ -88,4 +96,32 @@ it("fires secret mode actions", async () => {
   expect(baseProps.onToggleSecretMode).toHaveBeenCalledTimes(1);
   expect(baseProps.onShuffleFunModes).toHaveBeenCalledTimes(1);
   expect(baseProps.onClearFunModes).toHaveBeenCalledTimes(1);
+});
+
+it("applies settings only when save is clicked", async () => {
+  const baseProps = createBaseProps();
+  render(<MenuModal {...baseProps} view="settings" />);
+
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("radio", { name: /neon/i }));
+  expect(baseProps.onSettingsChange).not.toHaveBeenCalled();
+
+  await user.click(screen.getByRole("button", { name: /save/i }));
+  expect(baseProps.onSettingsChange).toHaveBeenCalledTimes(1);
+  expect(baseProps.onSettingsChange).toHaveBeenCalledWith(
+    expect.objectContaining({ theme: "neon" })
+  );
+  expect(baseProps.onClose).toHaveBeenCalledTimes(1);
+});
+
+it("drops settings changes when cancel is clicked", async () => {
+  const baseProps = createBaseProps();
+  render(<MenuModal {...baseProps} view="settings" />);
+
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("radio", { name: /neon/i }));
+  await user.click(screen.getByRole("button", { name: /cancel/i }));
+
+  expect(baseProps.onSettingsChange).not.toHaveBeenCalled();
+  expect(baseProps.onClose).toHaveBeenCalledTimes(1);
 });

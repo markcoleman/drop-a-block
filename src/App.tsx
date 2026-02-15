@@ -47,7 +47,9 @@ import {
   SECRET_MODES
 } from "./game/modes";
 import { useGame } from "./game/useGame";
+import { setLanguage, translate } from "./i18n";
 import { getPalette } from "./ui/palettes";
+import { applyThemeToDocument } from "./ui/themes";
 import type { CheatFeedback, MenuView, StartStep } from "./ui/types";
 import { isEditableTarget } from "./utils/dom";
 import { evaluateGoals, getNextLevelTarget } from "./utils/goals";
@@ -90,7 +92,14 @@ export const App = () => {
   const linesToNextLevel = Math.max(0, nextLevelTarget - state.lines);
   const linesIntoLevel = state.lines - levelStart;
   const levelProgress = Math.min(1, linesIntoLevel / 10);
-  const palette = useMemo(() => getPalette(settings.palette), [settings.palette]);
+  const palette = useMemo(
+    () => getPalette(settings.palette, settings.theme, settings.customTheme),
+    [settings.customTheme, settings.palette, settings.theme]
+  );
+  const themeToken = useMemo(
+    () => JSON.stringify([settings.theme, settings.customTheme]),
+    [settings.customTheme, settings.theme]
+  );
   const highScore = scores[0]?.score ?? 0;
   const clearShake = !settings.reducedMotion && clearFlash && state.lastClear >= 2;
   const statusRef = useRef(state.status);
@@ -139,9 +148,11 @@ export const App = () => {
 
   useEffect(() => {
     saveSettings(settings);
-    document.documentElement.dataset.theme = settings.theme;
+    applyThemeToDocument(document.documentElement, settings.theme, settings.customTheme);
     document.documentElement.dataset.palette = settings.palette;
     document.documentElement.dataset.motion = settings.reducedMotion ? "reduced" : "full";
+    document.documentElement.lang = settings.language;
+    setLanguage(settings.language);
     setSfxMuted(!settings.sound);
   }, [settings]);
 
@@ -666,7 +677,12 @@ export const App = () => {
     .toString()
     .padStart(2, "0");
   const sprintLinesLeft = Math.max(0, state.targetLines - state.lines);
-  const modeLabel = MODE_LABELS[state.playMode];
+  const modeLabel = translate(
+    `mode.${state.playMode}.label`,
+    undefined,
+    settings.language,
+    MODE_LABELS[state.playMode]
+  );
   const mobileFocusMode = isTouchMode && isNarrowViewport;
   const showHud = settings.showHud && !mobileFocusMode;
   const activeMenu = !showScoreEntry && menuView !== "none" ? menuView : null;
@@ -731,7 +747,7 @@ export const App = () => {
                 palette={palette}
                 dropTrail={dropTrail}
                 reducedMotion={settings.reducedMotion}
-                theme={settings.theme}
+                themeKey={themeToken}
                 onPointerDown={
                   doomPointerEnabled
                     ? handleDoomPointerDown
@@ -753,7 +769,7 @@ export const App = () => {
               {!showHud && !mobileFocusMode && (
                 <IconButton
                   className="hud-reveal-button"
-                  label="Show HUD"
+                  label={translate("app.showHud", undefined, settings.language, "Show HUD")}
                   onClick={() => setSettings((prev) => ({ ...prev, showHud: true }))}
                 >
                   <EyeIcon />
@@ -761,12 +777,19 @@ export const App = () => {
               )}
               {comboActive && state.status === "running" && (
                 <div className="combo-badge" aria-live="polite">
-                  Combo x{comboCount}
+                  {translate(
+                    "app.combo",
+                    { count: comboCount },
+                    settings.language,
+                    `Combo x${comboCount}`
+                  )}
                 </div>
               )}
               {bonusActive && state.status === "running" && (
                 <div className="bonus-timer" aria-live="polite">
-                  <span className="bonus-label">Bonus</span>
+                  <span className="bonus-label">
+                    {translate("app.bonus", undefined, settings.language, "Bonus")}
+                  </span>
                   <strong>{bonusSeconds}s</strong>
                 </div>
               )}

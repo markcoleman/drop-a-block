@@ -1,5 +1,10 @@
-import { ReactNode } from "react";
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+  ReactNode
+} from "react";
 
+import { useI18n } from "../i18n";
 import {
   ArrowDownIcon,
   ArrowLeftIcon,
@@ -30,7 +35,7 @@ const ControlButton = ({
 }: ControlButtonProps) => {
   const isHoldable = Boolean(onHoldStart || onHoldEnd);
 
-  const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+  const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     event.preventDefault();
     if (isHoldable) {
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -40,7 +45,7 @@ const ControlButton = ({
     onPress?.();
   };
 
-  const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
+  const handlePointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (!isHoldable) return;
     onHoldEnd?.();
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
@@ -48,7 +53,7 @@ const ControlButton = ({
     }
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
     if (event.key !== " " && event.key !== "Enter") return;
     event.preventDefault();
     if (isHoldable) {
@@ -58,7 +63,7 @@ const ControlButton = ({
     onPress?.();
   };
 
-  const handleKeyUp = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+  const handleKeyUp = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
     if (!isHoldable) return;
     if (event.key !== " " && event.key !== "Enter") return;
     event.preventDefault();
@@ -111,28 +116,30 @@ export const Controls = ({
   onPause: () => void;
   holdEnabled?: boolean;
 }) => {
+  const { t } = useI18n();
+
   return (
-    <div className="controls" aria-label="Touch controls">
+    <div className="controls" aria-label={t("controls.touchControls")}>
       <div className="controls-row controls-row--move">
         <ControlButton
-          label="Move left"
-          text="Left"
+          label={t("controls.moveLeft")}
+          text={t("controls.left")}
           onHoldStart={onLeftStart}
           onHoldEnd={onLeftEnd}
         >
           <ArrowLeftIcon />
         </ControlButton>
         <ControlButton
-          label="Move right"
-          text="Right"
+          label={t("controls.moveRight")}
+          text={t("controls.right")}
           onHoldStart={onRightStart}
           onHoldEnd={onRightEnd}
         >
           <ArrowRightIcon />
         </ControlButton>
         <ControlButton
-          label="Soft drop"
-          text="Down"
+          label={t("controls.softDrop")}
+          text={t("controls.down")}
           onHoldStart={onDownStart}
           onHoldEnd={onDownEnd}
         >
@@ -140,23 +147,35 @@ export const Controls = ({
         </ControlButton>
       </div>
       <div className="controls-row controls-row--rotate">
-        <ControlButton label="Rotate counter-clockwise" text="Rotate L" onPress={onRotateCcw}>
+        <ControlButton
+          label={t("controls.rotateCcw")}
+          text={t("controls.rotateL")}
+          onPress={onRotateCcw}
+        >
           <RotateCcwIcon />
         </ControlButton>
-        <ControlButton label="Rotate clockwise" text="Rotate R" onPress={onRotateCw}>
+        <ControlButton
+          label={t("controls.rotateCw")}
+          text={t("controls.rotateR")}
+          onPress={onRotateCw}
+        >
           <RotateCwIcon />
         </ControlButton>
-        <ControlButton label="Hard drop" text="Hard Drop" onPress={onHardDrop}>
+        <ControlButton
+          label={t("controls.hardDrop")}
+          text={t("controls.hardDropText")}
+          onPress={onHardDrop}
+        >
           <HardDropIcon />
         </ControlButton>
       </div>
       <div className="controls-row controls-row--system">
         {holdEnabled && (
-          <ControlButton label="Hold piece" text="Hold" onPress={onHold}>
+          <ControlButton label={t("controls.holdPiece")} text={t("controls.hold")} onPress={onHold}>
             <HoldIcon />
           </ControlButton>
         )}
-        <ControlButton label="Pause" text="Pause" onPress={onPause}>
+        <ControlButton label={t("controls.pause")} text={t("controls.pause")} onPress={onPause}>
           <PauseIcon />
         </ControlButton>
       </div>

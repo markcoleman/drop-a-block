@@ -1,8 +1,10 @@
 import clsx from "clsx";
 import type { ReactNode } from "react";
 
+import { SPRINT_TARGET_LINES, ULTRA_DURATION } from "../engine/engine";
 import type { PlayMode } from "../engine/types";
 import { MODE_LABELS, MODE_OPTIONS, MODE_UNLOCKS } from "../game/modes";
+import { useI18n } from "../i18n";
 import type { CheatFeedback, StartStep } from "../ui/types";
 import { ArrowLeftIcon, HelpIcon, PlayIcon, SettingsIcon, TrophyIcon } from "./Icons";
 
@@ -80,22 +82,22 @@ export const StartOverlay = ({
   onOpenHelp,
   onOpenAbout
 }: StartOverlayProps) => {
+  const { t } = useI18n();
+
   return (
     <div className="overlay start-overlay">
       <div className="start-menu">
         <div className="start-menu-header" onClick={onCheatTap}>
-          <p className="eyebrow">Start Menu</p>
-          <h2>{startStep === "mode" ? "Choose your mode" : "Ready to drop?"}</h2>
+          <p className="eyebrow">{t("start.startMenu")}</p>
+          <h2>{startStep === "mode" ? t("start.chooseMode") : t("start.readyToDrop")}</h2>
           <p className="subtitle">
-            {startStep === "mode"
-              ? "Normal is unlocked by default. Other modes unlock after you play."
-              : "Start a run, then pick the game mode type."}
+            {startStep === "mode" ? t("start.modeUnlocked") : t("start.pickGameMode")}
           </p>
         </div>
         {startStep === "mode" ? (
           <>
             <div className="mode-select">
-              <p className="eyebrow">Game Mode</p>
+              <p className="eyebrow">{t("start.gameMode")}</p>
               <div className="mode-options">
                 {MODE_OPTIONS.map((mode) => {
                   const isUnlocked = unlockedModes.has(mode.id);
@@ -115,11 +117,27 @@ export const StartOverlay = ({
                       onClick={() => isUnlocked && onSelectMode(mode.id)}
                       disabled={!isUnlocked}
                     >
-                      <span className="mode-option-title">{mode.label}</span>
-                      <span className="mode-option-desc">{mode.desc}</span>
+                      <span className="mode-option-title">
+                        {t(`mode.${mode.id}.label`, undefined, mode.label)}
+                      </span>
+                      <span className="mode-option-desc">
+                        {mode.id === "sprint"
+                          ? t("mode.sprint.desc", { lines: SPRINT_TARGET_LINES }, mode.desc)
+                          : mode.id === "ultra"
+                            ? t(
+                                "mode.ultra.desc",
+                                { minutes: Math.round(ULTRA_DURATION / 60000) },
+                                mode.desc
+                              )
+                            : t(`mode.${mode.id}.desc`, undefined, mode.desc)}
+                      </span>
                       {!isUnlocked && requirement && (
                         <span className="mode-option-lock">
-                          Locked - {requirement.label} ({progress}/{requirement.plays})
+                          {t(
+                            "start.lockedProgress",
+                            { label: requirement.label, progress, plays: requirement.plays },
+                            `Locked - ${requirement.label} (${progress}/${requirement.plays})`
+                          )}
                         </span>
                       )}
                     </button>
@@ -127,21 +145,25 @@ export const StartOverlay = ({
                 })}
               </div>
             </div>
-            <div className="mode-unlock-progress muted">Games finished: {totalPlays}</div>
+            <div className="mode-unlock-progress muted">
+              {t("start.gamesFinished", { count: totalPlays })}
+            </div>
             <div className="start-menu-actions">
               <StartMenuButton
                 className="primary"
                 onClick={onLaunch}
                 disabled={!unlockedModes.has(selectedMode)}
                 icon={<PlayIcon />}
-                title={`Launch ${MODE_LABELS[selectedMode]}`}
-                desc={`Drop into level ${startLevel}.`}
+                title={t("start.launchMode", {
+                  mode: t(`mode.${selectedMode}.label`, undefined, MODE_LABELS[selectedMode])
+                })}
+                desc={t("start.dropLevel", { level: startLevel })}
               />
               <StartMenuButton
                 onClick={onBack}
                 icon={<ArrowLeftIcon />}
-                title="Back"
-                desc="Return to the start menu."
+                title={t("start.back")}
+                desc={t("start.returnStart")}
               />
             </div>
           </>
@@ -151,38 +173,38 @@ export const StartOverlay = ({
               className="primary"
               onClick={onStartMenu}
               icon={<PlayIcon />}
-              title="Start Game"
-              desc="Pick your mode next."
+              title={t("start.startGame")}
+              desc={t("start.pickModeNext")}
             />
             <StartMenuButton
               onClick={onOpenScores}
               icon={<TrophyIcon />}
-              title="High Scores"
-              desc="Your top runs and rankings."
+              title={t("start.highScores")}
+              desc={t("start.rankings")}
             />
             <StartMenuButton
               onClick={onOpenSettings}
               icon={<SettingsIcon />}
-              title="Adjust Settings"
-              desc="Sound, theme, and speed controls."
+              title={t("start.adjustSettings")}
+              desc={t("start.soundThemeSpeed")}
             />
             <StartMenuButton
               onClick={onOpenHelp}
               icon={<HelpIcon />}
-              title="Help"
-              desc="Controls, tactics, and pro tips."
+              title={t("start.help")}
+              desc={t("start.proTips")}
             />
             <StartMenuButton
               onClick={onOpenAbout}
               icon={<HelpIcon />}
-              title="About"
-              desc="Board size, colors, and rules."
+              title={t("start.about")}
+              desc={t("start.boardRules")}
             />
           </div>
         )}
         {showCheatEntry && (
           <div className="cheat-entry">
-            <p className="eyebrow">Cheat Code</p>
+            <p className="eyebrow">{t("start.cheatCode")}</p>
             <div className="cheat-row">
               <input
                 value={cheatInput}
@@ -190,15 +212,17 @@ export const StartOverlay = ({
                 onKeyDown={(event) => {
                   if (event.key === "Enter") onCheatSubmit();
                 }}
-                placeholder="Enter code"
-                aria-label="Cheat code"
+                placeholder={t("start.enterCode")}
+                aria-label={t("start.cheatCode")}
                 autoComplete="off"
               />
               <button className="primary" onClick={onCheatSubmit}>
-                Enter
+                {t("start.enter")}
               </button>
             </div>
-            {cheatFeedback === "error" && <span className="cheat-feedback">Nope. Try again.</span>}
+            {cheatFeedback === "error" && (
+              <span className="cheat-feedback">{t("app.cheatNope")}</span>
+            )}
           </div>
         )}
       </div>

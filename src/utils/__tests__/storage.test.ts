@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { createDefaultCustomTheme } from "../../ui/themes";
 import { loadScores, loadSettings, resetScores, saveScore, saveSettings } from "../storage";
 
 type MockStorage = {
@@ -41,6 +42,8 @@ describe("storage", () => {
     expect(settings).toEqual({
       theme: "dark",
       palette: "default",
+      language: "en",
+      customTheme: createDefaultCustomTheme(),
       reducedMotion: false,
       sound: true,
       showHud: true,
@@ -57,6 +60,7 @@ describe("storage", () => {
     expect(settings.sound).toBe(false);
     expect(settings.theme).toBe("dark");
     expect(settings.palette).toBe("default");
+    expect(settings.language).toBe("en");
     expect(settings.reducedMotion).toBe(false);
     expect(settings.das).toBe(150);
     expect(settings.arr).toBe(50);
@@ -76,6 +80,14 @@ describe("storage", () => {
     saveSettings({
       theme: "neon",
       palette: "colorblind",
+      language: "es",
+      customTheme: {
+        name: "My Theme",
+        baseTheme: "liquid2026",
+        colors: { accent: "#12ffea" },
+        assets: { boardOverlay: "https://example.com/overlay.png" },
+        piecePalette: { I: "#11ccff" }
+      },
       reducedMotion: true,
       sound: false,
       showHud: false,
@@ -88,6 +100,14 @@ describe("storage", () => {
     expect(settings).toEqual({
       theme: "neon",
       palette: "colorblind",
+      language: "es",
+      customTheme: {
+        name: "My Theme",
+        baseTheme: "liquid2026",
+        colors: { accent: "#12ffea" },
+        assets: { boardOverlay: "https://example.com/overlay.png" },
+        piecePalette: { I: "#11ccff" }
+      },
       reducedMotion: true,
       sound: false,
       showHud: false,

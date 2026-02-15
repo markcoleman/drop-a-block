@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { useEffect, useState } from "react";
 
 import {
   ARKANOID_TRIGGER_LINES,
@@ -12,6 +13,7 @@ import {
 } from "../engine/engine";
 import type { GameModifiers, PlayMode } from "../engine/types";
 import { MODE_OPTIONS, MODE_UNLOCKS, SECRET_MODES } from "../game/modes";
+import { useI18n } from "../i18n";
 import type { PaletteMap } from "../ui/palettes";
 import type { MenuView } from "../ui/types";
 import type { HighScore, Settings } from "../utils/storage";
@@ -40,46 +42,48 @@ type MenuModalProps = {
 };
 
 const HelpPanel = ({ holdEnabled }: { holdEnabled: boolean }) => {
+  const { t } = useI18n();
   return (
     <div className="help-panel">
-      <p className="muted">
-        Tight rotations and fast drops win. Use Hold to save a rescue piece, and watch the next
-        queue.
-      </p>
+      <p className="muted">{t("menu.helpIntro")}</p>
       <ul className="help-list">
         <li>
-          <strong>Rotate</strong> with Z / X or the on-screen rotate buttons.
+          <strong>{t("menu.rotate")}</strong> {t("menu.rotateDesc")}
         </li>
         <li>
-          <strong>Touch controls</strong> let you drag left/right, swipe down to drop, and tap the
-          board to rotate. You can toggle mobile controls in Settings.
+          <strong>{t("menu.touch")}</strong> {t("menu.touchDesc")}
         </li>
         <li>
-          <strong>Hard drop</strong> with Space or the hard drop button.
+          <strong>{t("menu.hardDrop")}</strong> {t("menu.hardDropDesc")}
         </li>
         {holdEnabled && (
           <li>
-            <strong>Hold</strong> with C / Shift to swap the current tetromino.
+            <strong>{t("menu.hold")}</strong> {t("menu.holdDesc")}
           </li>
         )}
         <li>
-          <strong>Arkanoid mode</strong> triggers every {ARKANOID_TRIGGER_LINES} lines for 30
-          seconds.
+          <strong>{t("menu.arkanoid")}</strong>{" "}
+          {t("menu.arkanoidDesc", { lines: ARKANOID_TRIGGER_LINES })}
         </li>
         <li>
-          <strong>Doom run</strong> triggers every {DOOM_TRIGGER_LINES} lines. You get{" "}
-          {Math.round(DOOM_DURATION / 1000)} seconds to clear a path to the exit with WASD + mouse.
+          <strong>{t("menu.doomRun")}</strong>{" "}
+          {t("menu.doomRunDesc", {
+            lines: DOOM_TRIGGER_LINES,
+            seconds: Math.round(DOOM_DURATION / 1000)
+          })}
         </li>
         <li>
-          <strong>Doom pickups</strong> restore health, armor, and ammo. Enemies can drain your
-          health.
+          <strong>{t("menu.doomPickups")}</strong> {t("menu.doomPickupsDesc")}
         </li>
         <li>
-          <strong>Modes</strong> include Normal (Marathon), Sprint ({SPRINT_TARGET_LINES} lines),
-          and Ultra ({Math.round(ULTRA_DURATION / 60000)} minutes).
+          <strong>{t("menu.modes")}</strong>{" "}
+          {t("menu.modesDesc", {
+            sprint: SPRINT_TARGET_LINES,
+            minutes: Math.round(ULTRA_DURATION / 60000)
+          })}
         </li>
         <li>
-          <strong>Pause</strong> anytime with P or Esc.
+          <strong>{t("menu.pause")}</strong> {t("menu.pauseDesc")}
         </li>
       </ul>
     </div>
@@ -107,11 +111,13 @@ const SecretPanel = ({
   onShuffleFunModes: () => void;
   onClearFunModes: () => void;
 }) => {
+  const { t } = useI18n();
+
   return (
     <div className="secret-panel">
-      <p className="muted">Secret console unlocked. Changes apply to your next run.</p>
+      <p className="muted">{t("menu.secretUnlocked")}</p>
       <div className="secret-section">
-        <h3>Mode Unlocks</h3>
+        <h3>{t("menu.modeUnlocks")}</h3>
         <div className="secret-grid">
           {MODE_OPTIONS.filter((mode) => mode.id !== "marathon").map((mode) => {
             const isUnlocked = unlockedModes.has(mode.id);
@@ -126,12 +132,28 @@ const SecretPanel = ({
                 disabled={isUnlocked}
               >
                 <span className="secret-title">
-                  {mode.label}
+                  {t(`mode.${mode.id}.label`, undefined, mode.label)}
                   <span className="secret-status">
-                    {isUnlocked ? "Unlocked" : `Locked - ${progress}/${requirement.plays}`}
+                    {isUnlocked
+                      ? t("menu.unlocked")
+                      : t(
+                          "menu.locked",
+                          { progress, plays: requirement.plays },
+                          `Locked - ${progress}/${requirement.plays}`
+                        )}
                   </span>
                 </span>
-                <span className="secret-desc">{mode.desc}</span>
+                <span className="secret-desc">
+                  {mode.id === "sprint"
+                    ? t("mode.sprint.desc", { lines: SPRINT_TARGET_LINES }, mode.desc)
+                    : mode.id === "ultra"
+                      ? t(
+                          "mode.ultra.desc",
+                          { minutes: Math.round(ULTRA_DURATION / 60000) },
+                          mode.desc
+                        )
+                      : t(`mode.${mode.id}.desc`, undefined, mode.desc)}
+                </span>
                 {!isUnlocked && <span className="secret-meta">{requirement.label}</span>}
               </button>
             );
@@ -139,15 +161,15 @@ const SecretPanel = ({
         </div>
         <div className="secret-actions">
           <button className="secret-action" onClick={onUnlockAllModes}>
-            Unlock All Modes
+            {t("menu.unlockAllModes")}
           </button>
           <button className="secret-action" onClick={onResetModeUnlocks}>
-            Reset Mode Unlocks
+            {t("menu.resetModeUnlocks")}
           </button>
         </div>
       </div>
       <div className="secret-section">
-        <h3>Fun Modes</h3>
+        <h3>{t("menu.funModes")}</h3>
         <div className="secret-grid">
           {SECRET_MODES.map((mode) => (
             <button
@@ -158,19 +180,23 @@ const SecretPanel = ({
               onClick={() => onToggleSecretMode(mode.id)}
             >
               <span className="secret-title">
-                {mode.label}
-                <span className="secret-status">{activeModifiers[mode.id] ? "On" : "Off"}</span>
+                {t(`secret.${mode.id}.label`, undefined, mode.label)}
+                <span className="secret-status">
+                  {activeModifiers[mode.id] ? t("menu.on") : t("menu.off")}
+                </span>
               </span>
-              <span className="secret-desc">{mode.desc}</span>
+              <span className="secret-desc">
+                {t(`secret.${mode.id}.desc`, undefined, mode.desc)}
+              </span>
             </button>
           ))}
         </div>
         <div className="secret-actions">
           <button className="secret-action" onClick={onShuffleFunModes}>
-            Remix Fun
+            {t("menu.remixFun")}
           </button>
           <button className="secret-action" onClick={onClearFunModes}>
-            Clear Fun Modes
+            {t("menu.clearFunModes")}
           </button>
         </div>
       </div>
@@ -179,11 +205,16 @@ const SecretPanel = ({
 };
 
 const AboutPanel = ({ palette }: { palette: PaletteMap }) => {
+  const { t } = useI18n();
+
   return (
     <div className="help-panel">
       <p className="muted about-copy">
-        Board size {BOARD_WIDTH}x{VISIBLE_ROWS} with {BOARD_HEIGHT - VISIBLE_ROWS} hidden spawn
-        rows. Colors are mapped per tetromino.
+        {t("menu.aboutBoard", {
+          width: BOARD_WIDTH,
+          visibleRows: VISIBLE_ROWS,
+          hiddenRows: BOARD_HEIGHT - VISIBLE_ROWS
+        })}
       </p>
       <div className="legend about-legend">
         {Object.entries(palette).map(([key, value]) => (
@@ -213,45 +244,80 @@ export const MenuModal = ({
   onUnlockAllModes,
   onResetModeUnlocks
 }: MenuModalProps) => {
+  const { t } = useI18n();
+  const [draftSettings, setDraftSettings] = useState(settings);
+
+  useEffect(() => {
+    if (view === "settings") {
+      setDraftSettings(settings);
+    }
+  }, [settings, view]);
+
+  const handleCancelSettings = () => {
+    setDraftSettings(settings);
+    onClose();
+  };
+
+  const handleSaveSettings = () => {
+    onSettingsChange(draftSettings);
+    onClose();
+  };
+
   const title =
     view === "settings"
-      ? "Adjust Settings"
+      ? t("menu.adjustSettings")
       : view === "help"
-        ? "Help"
+        ? t("menu.help")
         : view === "scores"
-          ? "High Scores"
+          ? t("menu.highScores")
           : view === "secret"
-            ? "Secret Menu"
-            : "About";
+            ? t("menu.secretMenu")
+            : t("menu.about");
+
+  const content =
+    view === "settings" ? (
+      <SettingsPanel settings={draftSettings} onChange={setDraftSettings} className="embedded" />
+    ) : view === "help" ? (
+      <HelpPanel holdEnabled={settings.holdEnabled} />
+    ) : view === "scores" ? (
+      <HighScores scores={scores} className="embedded" />
+    ) : view === "secret" ? (
+      <SecretPanel
+        unlockedModes={unlockedModes}
+        totalPlays={totalPlays}
+        activeModifiers={activeModifiers}
+        onUnlockMode={onUnlockMode}
+        onUnlockAllModes={onUnlockAllModes}
+        onResetModeUnlocks={onResetModeUnlocks}
+        onToggleSecretMode={onToggleSecretMode}
+        onShuffleFunModes={onShuffleFunModes}
+        onClearFunModes={onClearFunModes}
+      />
+    ) : (
+      <AboutPanel palette={palette} />
+    );
 
   return (
-    <Modal size="large">
+    <Modal size="large" cardClassName="menu-modal-card">
       <div className="modal-header">
         <h2>{title}</h2>
-        <IconButton label="Close" onClick={onClose}>
+        <IconButton
+          label={t("menu.close")}
+          onClick={view === "settings" ? handleCancelSettings : onClose}
+        >
           <CloseIcon />
         </IconButton>
       </div>
-      {view === "settings" ? (
-        <SettingsPanel settings={settings} onChange={onSettingsChange} className="embedded" />
-      ) : view === "help" ? (
-        <HelpPanel holdEnabled={settings.holdEnabled} />
-      ) : view === "scores" ? (
-        <HighScores scores={scores} className="embedded" />
-      ) : view === "secret" ? (
-        <SecretPanel
-          unlockedModes={unlockedModes}
-          totalPlays={totalPlays}
-          activeModifiers={activeModifiers}
-          onUnlockMode={onUnlockMode}
-          onUnlockAllModes={onUnlockAllModes}
-          onResetModeUnlocks={onResetModeUnlocks}
-          onToggleSecretMode={onToggleSecretMode}
-          onShuffleFunModes={onShuffleFunModes}
-          onClearFunModes={onClearFunModes}
-        />
-      ) : (
-        <AboutPanel palette={palette} />
+      <div className="menu-modal-body">{content}</div>
+      {view === "settings" && (
+        <div className="menu-modal-footer">
+          <button type="button" className="ghost" onClick={handleCancelSettings}>
+            {t("menu.cancel")}
+          </button>
+          <button type="button" className="primary" onClick={handleSaveSettings}>
+            {t("menu.save")}
+          </button>
+        </div>
       )}
     </Modal>
   );

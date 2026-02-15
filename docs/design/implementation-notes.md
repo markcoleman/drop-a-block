@@ -2,15 +2,27 @@
 
 **Themes**
 
-- Themes are applied via `data-theme` on `document.documentElement`.
-- Available themes: `dark`, `neon`, `retro`.
-- Retro theme swaps UI typography to `--font-mono` for a mono arcade feel.
+- Themes are applied via runtime CSS variables on `document.documentElement`.
+- Built-in themes: `dark`, `neon`, `retro`, `liquid2026`, `gameboy`, `solarized`, `c64`.
+- Custom themes support overrides for UI color tokens, piece colors, and asset URLs (including Doom sprites + texture overlays).
+- Retro-based themes keep mono-arcade typography through `data-theme="retro"`.
 
 **Palettes**
 
-- Piece palettes live in `src/ui/palettes.ts`.
-- `default` is the premium arcade palette; `colorblind` uses a color-universal set.
-- Canvas rendering and MiniGrid read the active palette from settings.
+- Piece palettes are resolved in `src/ui/palettes.ts` from either the active theme or colorblind mode.
+- `default` now follows the active theme palette; `colorblind` remains the universal accessible set.
+- Canvas rendering and MiniGrid read the resolved palette from settings.
+
+**Localization**
+
+- UI strings are translated through `src/i18n/index.ts`.
+- Supported languages: `en`, `es`, `ja`.
+- Language selection is part of persisted settings.
+
+**Styling**
+
+- Tailwind CSS is enabled via PostCSS (`tailwind.config.js`, `postcss.config.js`).
+- Existing semantic class architecture remains in `src/styles/global.css`; new settings UI uses Tailwind utility classes.
 
 **Motion**
 
