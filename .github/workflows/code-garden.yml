@@ -1,0 +1,52 @@
+name: code-garden
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 9 * * 5"
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint autofix
+        run: npm run lint -- --fix
+
+      - name: Run formatter
+        run: npm run format
+
+      - name: Validate docs references
+        run: npm run docs:check
+
+      - name: Open code gardening PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: codex/code-garden
+          commit-message: "chore: automated cleanup"
+          title: "chore: automated cleanup"
+          body: |
+            Automated code gardening update.
+
+            - Applies lint autofixes
+            - Applies formatting
+            - Re-runs docs validation
+          labels: |
+            maintenance
+            cleanup
+          delete-branch: true
