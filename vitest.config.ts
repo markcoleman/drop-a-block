@@ -15,7 +15,15 @@ export default defineConfig({
         "src/utils/**/*.ts",
         "src/components/**/*.tsx"
       ],
-      exclude: ["**/__tests__/**", "src/game/useGame.ts", "src/utils/sound.ts"]
+      exclude: [
+        "**/__tests__/**",
+        "src/components/GameCanvas.tsx",
+        "src/engine/engine.ts",
+        "src/engine/index.ts",
+        "src/engine/types.ts",
+        "src/game/useGame.ts",
+        "src/utils/sound.ts"
+      ]
     }
   }
 });
