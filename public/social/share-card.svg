@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="80" y1="88" x2="1114" y2="1124" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1020"/>
+      <stop offset="0.45" stop-color="#14274D"/>
+      <stop offset="1" stop-color="#0B1020"/>
+    </linearGradient>
+    <linearGradient id="well" x1="744" y1="338" x2="1050" y2="722" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="1200" rx="96" fill="url(#bg)"/>
+  <circle cx="1096" cy="170" r="220" fill="#38BDF8" fill-opacity="0.12"/>
+  <circle cx="112" cy="1060" r="240" fill="#0EA5E9" fill-opacity="0.1"/>
+  <rect x="714" y="292" width="362" height="612" rx="52" fill="#0E1632" stroke="rgba(255,255,255,0.14)" stroke-width="2"/>
+  <rect x="754" y="332" width="282" height="532" rx="38" fill="url(#well)"/>
+  <rect x="820" y="424" width="150" height="56" rx="12" fill="#E2E8F0"/>
+  <rect x="820" y="504" width="98" height="206" rx="12" fill="#E2E8F0"/>
+  <path d="M492 400L446 362L400 400L354 362V425L400 463L446 425L492 463V400Z" fill="#22D3EE"/>
+  <path d="M610 500L556 446L502 500L556 554L610 500Z" fill="#F97316"/>
+  <path d="M560 650H438V695H514V783H560V650Z" fill="#F8FAFC"/>
+  <text x="116" y="420" fill="#E2E8F0" font-family="'Space Grotesk', 'Segoe UI', sans-serif" font-size="108" font-weight="700" letter-spacing="1">DROP-A-BLOCK</text>
+  <text x="120" y="494" fill="#93C5FD" font-family="'Space Grotesk', 'Segoe UI', sans-serif" font-size="44" font-weight="600" letter-spacing="4">MOBILE ARCADE PUZZLE</text>
+  <text x="120" y="588" fill="#CBD5E1" font-family="'Inter', 'Segoe UI', sans-serif" font-size="44" font-weight="500">Tap to rotate. Drag to move.</text>
+  <text x="120" y="650" fill="#CBD5E1" font-family="'Inter', 'Segoe UI', sans-serif" font-size="44" font-weight="500">Add to Home Screen. Play instantly.</text>
+</svg>

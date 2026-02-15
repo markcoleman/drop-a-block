@@ -116,6 +116,7 @@ export const App = () => {
     cellWidth: number;
     cellHeight: number;
     hardDropTriggered: boolean;
+    axis: "none" | "horizontal" | "vertical";
   } | null>(null);
   const updateGoalsState = useCallback(
     (updater: (prev: typeof goalsState) => typeof goalsState) => {
@@ -242,6 +243,20 @@ export const App = () => {
       setStartStep("main");
     }
   }, [state.status]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const launchTarget = params.get("launch");
+    if (!launchTarget) return;
+    if (launchTarget === "scores") {
+      setMenuView("scores");
+      return;
+    }
+    if (launchTarget === "play") {
+      setMenuView("none");
+      setStartStep("mode");
+    }
+  }, []);
 
   useEffect(() => {
     const progress = evaluateGoals(
@@ -420,6 +435,7 @@ export const App = () => {
       const current = stateRef.current;
       if (current.mode !== "tetris" || current.status !== "running") return;
       if (event.pointerType === "mouse") return;
+      if (touchGestureRef.current) return;
       const rect = event.currentTarget.getBoundingClientRect();
       touchGestureRef.current = {
         pointerId: event.pointerId,
@@ -430,7 +446,8 @@ export const App = () => {
         startedAt: performance.now(),
         cellWidth: rect.width / BOARD_WIDTH,
         cellHeight: rect.height / VISIBLE_ROWS,
-        hardDropTriggered: false
+        hardDropTriggered: false,
+        axis: "none"
       };
     },
     [stateRef]
@@ -446,34 +463,50 @@ export const App = () => {
         return;
       }
 
-      const moveThreshold = Math.max(8, gesture.cellWidth * 0.55);
-      let deltaX = event.clientX - gesture.lastX;
+      const totalX = event.clientX - gesture.startX;
+      const totalY = event.clientY - gesture.startY;
+      const lockThresholdX = Math.max(10, gesture.cellWidth * 0.35);
+      const lockThresholdY = Math.max(12, gesture.cellHeight * 0.5);
 
-      while (deltaX >= moveThreshold) {
-        handleAction("right");
-        gesture.lastX += moveThreshold;
-        deltaX = event.clientX - gesture.lastX;
+      if (
+        gesture.axis === "none" &&
+        (Math.abs(totalX) >= lockThresholdX || Math.abs(totalY) >= lockThresholdY)
+      ) {
+        gesture.axis = Math.abs(totalX) >= Math.abs(totalY) * 0.95 ? "horizontal" : "vertical";
       }
 
-      while (deltaX <= -moveThreshold) {
-        handleAction("left");
-        gesture.lastX -= moveThreshold;
-        deltaX = event.clientX - gesture.lastX;
+      if (gesture.axis !== "vertical") {
+        const moveThreshold = Math.max(7, gesture.cellWidth * 0.42);
+        let deltaX = event.clientX - gesture.lastX;
+
+        while (deltaX >= moveThreshold) {
+          handleAction("right");
+          gesture.lastX += moveThreshold;
+          deltaX = event.clientX - gesture.lastX;
+        }
+
+        while (deltaX <= -moveThreshold) {
+          handleAction("left");
+          gesture.lastX -= moveThreshold;
+          deltaX = event.clientX - gesture.lastX;
+        }
       }
 
-      const softDropThreshold = Math.max(12, gesture.cellHeight * 0.65);
-      let deltaY = event.clientY - gesture.lastY;
-      while (deltaY >= softDropThreshold) {
-        handleAction("down");
-        gesture.lastY += softDropThreshold;
-        deltaY = event.clientY - gesture.lastY;
-      }
+      if (gesture.axis !== "horizontal") {
+        const softDropThreshold = Math.max(14, gesture.cellHeight * 0.75);
+        let deltaY = event.clientY - gesture.lastY;
+        while (deltaY >= softDropThreshold) {
+          handleAction("down");
+          gesture.lastY += softDropThreshold;
+          deltaY = event.clientY - gesture.lastY;
+        }
 
-      const totalDropDistance = event.clientY - gesture.startY;
-      const hardDropThreshold = Math.max(96, gesture.cellHeight * 3.8);
-      if (!gesture.hardDropTriggered && totalDropDistance >= hardDropThreshold) {
-        gesture.hardDropTriggered = true;
-        handleAction("hardDrop");
+        const totalDropDistance = event.clientY - gesture.startY;
+        const hardDropThreshold = Math.max(110, gesture.cellHeight * 4.5);
+        if (!gesture.hardDropTriggered && totalDropDistance >= hardDropThreshold) {
+          gesture.hardDropTriggered = true;
+          handleAction("hardDrop");
+        }
       }
     },
     [handleAction, stateRef]
@@ -489,7 +522,7 @@ export const App = () => {
       const current = stateRef.current;
       if (current.mode !== "tetris" || current.status !== "running") return;
 
-      const tapMaxDuration = 260;
+      const tapMaxDuration = 320;
       const tapSlop = Math.max(10, gesture.cellWidth * 0.35);
       const elapsed = performance.now() - gesture.startedAt;
       const movedX = Math.abs(event.clientX - gesture.startX);
