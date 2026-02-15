@@ -10,6 +10,8 @@ const baseSettings: Settings = {
   palette: "default",
   reducedMotion: false,
   sound: true,
+  showHud: true,
+  mobileControls: true,
   das: 150,
   arr: 50,
   holdEnabled: true
@@ -30,11 +32,17 @@ it("updates settings when controls change", async () => {
   await user.click(screen.getByLabelText(/reduced motion/i));
   expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ reducedMotion: true }));
 
+  await user.click(screen.getByLabelText(/show hud/i));
+  expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ showHud: false }));
+
   await user.click(screen.getByLabelText(/sound effects/i));
   expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ sound: false }));
 
   await user.click(screen.getByLabelText(/enable hold/i));
   expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ holdEnabled: false }));
+
+  await user.click(screen.getByLabelText(/mobile controls/i));
+  expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ mobileControls: false }));
 
   fireEvent.change(screen.getByLabelText(/DAS/i), { target: { value: "200" } });
   expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ das: 200 }));

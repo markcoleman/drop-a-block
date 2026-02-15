@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import type { GameMode, GameStatus, PlayMode } from "../engine/types";
 import { IconButton } from "./IconButton";
-import { PauseIcon, SettingsIcon } from "./Icons";
+import { EyeOffIcon, PauseIcon, SettingsIcon } from "./Icons";
 
 type HudBarProps = {
   status: GameStatus;
@@ -19,6 +19,7 @@ type HudBarProps = {
   highScore: number;
   onPause: () => void;
   onOpenSettings: () => void;
+  onHideHud: () => void;
 };
 
 const HudStat = ({
@@ -50,7 +51,8 @@ export const HudBar = ({
   doomLinesToReady,
   highScore,
   onPause,
-  onOpenSettings
+  onOpenSettings,
+  onHideHud
 }: HudBarProps) => {
   return (
     <div className="hud-bar">
@@ -89,6 +91,9 @@ export const HudBar = ({
         </IconButton>
         <IconButton className="hud-button" label="Open settings" onClick={onOpenSettings}>
           <SettingsIcon />
+        </IconButton>
+        <IconButton className="hud-button" label="Hide HUD" onClick={onHideHud}>
+          <EyeOffIcon />
         </IconButton>
       </div>
     </div>

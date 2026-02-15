@@ -7,6 +7,7 @@ import { HudBar } from "../HudBar";
 it("renders stats and fires actions", async () => {
   const onPause = vi.fn();
   const onOpenSettings = vi.fn();
+  const onHideHud = vi.fn();
 
   render(
     <HudBar
@@ -24,6 +25,7 @@ it("renders stats and fires actions", async () => {
       highScore={9000}
       onPause={onPause}
       onOpenSettings={onOpenSettings}
+      onHideHud={onHideHud}
     />
   );
 
@@ -33,7 +35,9 @@ it("renders stats and fires actions", async () => {
   const user = userEvent.setup();
   await user.click(screen.getByLabelText("Pause"));
   await user.click(screen.getByLabelText("Open settings"));
+  await user.click(screen.getByLabelText("Hide HUD"));
 
   expect(onPause).toHaveBeenCalledTimes(1);
   expect(onOpenSettings).toHaveBeenCalledTimes(1);
+  expect(onHideHud).toHaveBeenCalledTimes(1);
 });

@@ -12,6 +12,8 @@ const baseSettings: Settings = {
   palette: "default",
   reducedMotion: false,
   sound: true,
+  showHud: true,
+  mobileControls: true,
   das: 150,
   arr: 50,
   holdEnabled: true

@@ -43,6 +43,8 @@ describe("storage", () => {
       palette: "default",
       reducedMotion: false,
       sound: true,
+      showHud: true,
+      mobileControls: true,
       das: 150,
       arr: 50,
       holdEnabled: true
@@ -59,6 +61,8 @@ describe("storage", () => {
     expect(settings.das).toBe(150);
     expect(settings.arr).toBe(50);
     expect(settings.holdEnabled).toBe(true);
+    expect(settings.showHud).toBe(true);
+    expect(settings.mobileControls).toBe(true);
   });
 
   it("falls back to defaults on invalid settings JSON", () => {
@@ -74,6 +78,8 @@ describe("storage", () => {
       palette: "colorblind",
       reducedMotion: true,
       sound: false,
+      showHud: false,
+      mobileControls: false,
       das: 120,
       arr: 40,
       holdEnabled: false
@@ -84,6 +90,8 @@ describe("storage", () => {
       palette: "colorblind",
       reducedMotion: true,
       sound: false,
+      showHud: false,
+      mobileControls: false,
       das: 120,
       arr: 40,
       holdEnabled: false

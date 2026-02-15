@@ -13,7 +13,7 @@ const iconBase = (className?: string) =>
     strokeLinejoin: "round",
     "aria-hidden": true,
     focusable: "false"
-  } as const);
+  }) as const;
 
 export const PlayIcon = ({ className }: IconProps) => (
   <svg {...iconBase(className)} fill="currentColor" stroke="none">
@@ -107,5 +107,20 @@ export const PauseIcon = ({ className }: IconProps) => (
   <svg {...iconBase(className)} fill="currentColor" stroke="none">
     <rect x="7" y="5" width="4" height="14" rx="1.2" />
     <rect x="13" y="5" width="4" height="14" rx="1.2" />
+  </svg>
+);
+
+export const EyeIcon = ({ className }: IconProps) => (
+  <svg {...iconBase(className)}>
+    <path d="M2.5 12s3.6-6 9.5-6 9.5 6 9.5 6-3.6 6-9.5 6-9.5-6-9.5-6z" />
+    <circle cx="12" cy="12" r="2.6" />
+  </svg>
+);
+
+export const EyeOffIcon = ({ className }: IconProps) => (
+  <svg {...iconBase(className)}>
+    <path d="M2.5 12s3.6-6 9.5-6c2.4 0 4.4 1 6 2.3" />
+    <path d="M21.5 12s-3.6 6-9.5 6c-2.4 0-4.4-1-6-2.3" />
+    <path d="M4 4l16 16" />
   </svg>
 );
