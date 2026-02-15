@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { applyAction, canApplyAction } from "../actions";
-import { createInitialState, createEmptyBoard } from "../../engine/engine";
+
+import { createEmptyBoard, createInitialState } from "../../engine/engine";
 import { GameState } from "../../engine/types";
+import { applyAction, canApplyAction } from "../actions";
 
 const makeRunningState = (overrides: Partial<GameState>): GameState => ({
   ...createInitialState(),

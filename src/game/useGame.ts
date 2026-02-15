@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import { resetGame, tick } from "../engine/engine";
 import { GameState } from "../engine/types";
 import { Action, applyAction } from "./actions";

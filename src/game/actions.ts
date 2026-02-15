@@ -1,11 +1,11 @@
 import {
   doomShoot,
+  forceArkanoid,
   hardDrop,
   holdPiece,
-  forceArkanoid,
   launchBall,
-  movePiece,
   movePaddle,
+  movePiece,
   pauseGame,
   rotatePiece,
   setDoomInput,

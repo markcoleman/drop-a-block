@@ -1,4 +1,5 @@
 import clsx from "clsx";
+
 import { Settings } from "../utils/storage";
 
 type Props = {
@@ -47,9 +48,7 @@ export const SettingsPanel = ({ settings, onChange, className }: Props) => {
           <input
             type="checkbox"
             checked={settings.reducedMotion}
-            onChange={(event) =>
-              onChange({ ...settings, reducedMotion: event.target.checked })
-            }
+            onChange={(event) => onChange({ ...settings, reducedMotion: event.target.checked })}
           />
           <span>Reduced motion</span>
         </label>
@@ -60,9 +59,7 @@ export const SettingsPanel = ({ settings, onChange, className }: Props) => {
           <input
             type="checkbox"
             checked={settings.sound}
-            onChange={(event) =>
-              onChange({ ...settings, sound: event.target.checked })
-            }
+            onChange={(event) => onChange({ ...settings, sound: event.target.checked })}
           />
           <span>Sound effects</span>
         </label>
@@ -70,9 +67,7 @@ export const SettingsPanel = ({ settings, onChange, className }: Props) => {
           <input
             type="checkbox"
             checked={settings.holdEnabled}
-            onChange={(event) =>
-              onChange({ ...settings, holdEnabled: event.target.checked })
-            }
+            onChange={(event) => onChange({ ...settings, holdEnabled: event.target.checked })}
           />
           <span>Enable hold</span>
         </label>
@@ -86,9 +81,7 @@ export const SettingsPanel = ({ settings, onChange, className }: Props) => {
             max={250}
             step={10}
             value={settings.das}
-            onChange={(event) =>
-              onChange({ ...settings, das: Number(event.target.value) })
-            }
+            onChange={(event) => onChange({ ...settings, das: Number(event.target.value) })}
           />
           <span className="value">{settings.das}</span>
         </label>
@@ -100,9 +93,7 @@ export const SettingsPanel = ({ settings, onChange, className }: Props) => {
             max={120}
             step={10}
             value={settings.arr}
-            onChange={(event) =>
-              onChange({ ...settings, arr: Number(event.target.value) })
-            }
+            onChange={(event) => onChange({ ...settings, arr: Number(event.target.value) })}
           />
           <span className="value">{settings.arr}</span>
         </label>

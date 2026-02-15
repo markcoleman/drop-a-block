@@ -1,4 +1,5 @@
 import clsx from "clsx";
+
 import { HighScore } from "../utils/storage";
 
 type Props = {

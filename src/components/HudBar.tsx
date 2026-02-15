@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
+
 import type { GameMode, GameStatus, PlayMode } from "../engine/types";
-import { PauseIcon, SettingsIcon } from "./Icons";
 import { IconButton } from "./IconButton";
+import { PauseIcon, SettingsIcon } from "./Icons";
 
 type HudBarProps = {
   status: GameStatus;

@@ -1,3 +1,5 @@
+export { launchBall, movePaddle, setPaddlePosition } from "./arkanoid";
+export { createEmptyBoard, getBlocks, isValidPosition } from "./board";
 export {
   ARKANOID_TRIGGER_LINES,
   BOARD_HEIGHT,
@@ -19,26 +21,17 @@ export {
   ULTRA_DURATION,
   VISIBLE_ROWS
 } from "./constants";
-
-export { createEmptyBoard, getBlocks, isValidPosition } from "./board";
-
+export { doomShoot, setDoomInput, turnDoom } from "./doom";
 export {
   getArkanoidTriggerLines,
   getDoomTriggerLines,
   getDropInterval,
   getLockDelay
 } from "./rules";
-
-export { movePiece, rotatePiece, getGhost } from "./tetris";
-
-export { launchBall, movePaddle, setPaddlePosition } from "./arkanoid";
-
-export { doomShoot, setDoomInput, turnDoom } from "./doom";
-
 export {
   createInitialState,
-  forceDoom,
   forceArkanoid,
+  forceDoom,
   hardDrop,
   holdPiece,
   pauseGame,
@@ -47,3 +40,4 @@ export {
   startGame,
   tick
 } from "./state";
+export { getGhost, movePiece, rotatePiece } from "./tetris";

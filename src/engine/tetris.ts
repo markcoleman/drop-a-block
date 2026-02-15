@@ -1,16 +1,11 @@
-import {
-  I_KICKS,
-  JLSTZ_KICKS,
-  SPAWN_POSITION,
-  TETROMINO_ORDER
-} from "./constants";
 import { isValidPosition } from "./board";
+import { I_KICKS, JLSTZ_KICKS, SPAWN_POSITION, TETROMINO_ORDER } from "./constants";
 import type { GameState, Piece, RotationDirection, TetrominoType, Vec2 } from "./types";
 
 const getKickData = (type: TetrominoType, from: number, to: number) => {
   if (type === "O") return [{ x: 0, y: 0 }];
   const key = `${from}>${to}`;
-  return type === "I" ? I_KICKS[key] ?? [{ x: 0, y: 0 }] : JLSTZ_KICKS[key] ?? [{ x: 0, y: 0 }];
+  return type === "I" ? (I_KICKS[key] ?? [{ x: 0, y: 0 }]) : (JLSTZ_KICKS[key] ?? [{ x: 0, y: 0 }]);
 };
 
 const createBag = () => {
@@ -77,5 +72,4 @@ export const getGhost = (state: GameState): Piece => {
   return ghost;
 };
 
-export const canMoveDown = (state: GameState) =>
-  movePiece(state, { x: 0, y: 1 }) !== state;
+export const canMoveDown = (state: GameState) => movePiece(state, { x: 0, y: 1 }) !== state;

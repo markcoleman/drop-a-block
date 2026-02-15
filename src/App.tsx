@@ -1,18 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
 import clsx from "clsx";
-import {
-  BOARD_WIDTH,
-  forceDoom,
-  getDoomTriggerLines,
-  getGhost,
-  setPaddlePosition,
-  startGame,
-  turnDoom,
-  resetGame
-} from "./engine/engine";
+import type { PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { playClear, setSfxMuted } from "./audio/sfx";
 import { Controls } from "./components/Controls";
-import { GameCanvas, type DropTrail } from "./components/GameCanvas";
+import { type DropTrail, GameCanvas } from "./components/GameCanvas";
 import { GameOverOverlay } from "./components/GameOverOverlay";
 import { HudBar } from "./components/HudBar";
 import { MenuModal } from "./components/MenuModal";
@@ -21,10 +13,19 @@ import { QueuePanel } from "./components/QueuePanel";
 import { ScoreEntryModal } from "./components/ScoreEntryModal";
 import { StartOverlay } from "./components/StartOverlay";
 import { StatsPanel } from "./components/StatsPanel";
-import { loadGoalsState, loadScores, loadSettings, saveGoalsState, saveScore, saveSettings } from "./utils/storage";
-import { playClear, setSfxMuted } from "./audio/sfx";
-import { Action, canApplyAction } from "./game/actions";
+import {
+  BOARD_WIDTH,
+  forceDoom,
+  getDoomTriggerLines,
+  getGhost,
+  resetGame,
+  setPaddlePosition,
+  startGame,
+  turnDoom
+} from "./engine/engine";
+import type { GameModifiers, PlayMode } from "./engine/types";
 import { ACTION_EFFECTS } from "./game/actionEffects";
+import { Action, canApplyAction } from "./game/actions";
 import {
   CHEAT_CODE,
   CHEAT_TAP_TARGET,
@@ -43,11 +44,18 @@ import {
   SECRET_MODES
 } from "./game/modes";
 import { useGame } from "./game/useGame";
-import { evaluateGoals, getNextLevelTarget } from "./utils/goals";
-import type { GameModifiers, PlayMode } from "./engine/types";
-import { isEditableTarget } from "./utils/dom";
 import { getPalette } from "./ui/palettes";
 import type { CheatFeedback, MenuView, StartStep } from "./ui/types";
+import { isEditableTarget } from "./utils/dom";
+import { evaluateGoals, getNextLevelTarget } from "./utils/goals";
+import {
+  loadGoalsState,
+  loadScores,
+  loadSettings,
+  saveGoalsState,
+  saveScore,
+  saveSettings
+} from "./utils/storage";
 
 export const App = () => {
   const { state, stateRef, applyState, dispatch } = useGame();
@@ -249,37 +257,40 @@ export const App = () => {
     if (navigator.vibrate) navigator.vibrate(10);
   }, []);
 
-  const handleAction = useCallback((action: Action) => {
-    const current = stateRef.current;
-    if (current.status === "start") return;
-    const resolvedAction =
-      current.modifiers.mirror && (action === "left" || action === "right")
-        ? action === "left"
-          ? "right"
-          : "left"
-        : action;
-    if (resolvedAction === "hold" && !settings.holdEnabled) return;
-    if (!canApplyAction(current, resolvedAction)) return;
-    if (
-      resolvedAction === "hardDrop" &&
-      current.mode !== "arkanoid" &&
-      !current.modifiers.noGhost &&
-      !settings.reducedMotion
-    ) {
-      const ghost = getGhost(current);
-      setDropTrail({
-        active: current.active,
-        ghost,
-        startedAt: performance.now(),
-        color: palette[current.active.type]
-      });
-    }
-    dispatch(resolvedAction);
-    if (current.status !== "running") return;
-    const effect = ACTION_EFFECTS[resolvedAction];
-    if (effect?.sound) effect.sound();
-    if (effect?.haptics) haptics();
-  }, [dispatch, haptics, palette, settings.holdEnabled, settings.reducedMotion, stateRef]);
+  const handleAction = useCallback(
+    (action: Action) => {
+      const current = stateRef.current;
+      if (current.status === "start") return;
+      const resolvedAction =
+        current.modifiers.mirror && (action === "left" || action === "right")
+          ? action === "left"
+            ? "right"
+            : "left"
+          : action;
+      if (resolvedAction === "hold" && !settings.holdEnabled) return;
+      if (!canApplyAction(current, resolvedAction)) return;
+      if (
+        resolvedAction === "hardDrop" &&
+        current.mode !== "arkanoid" &&
+        !current.modifiers.noGhost &&
+        !settings.reducedMotion
+      ) {
+        const ghost = getGhost(current);
+        setDropTrail({
+          active: current.active,
+          ghost,
+          startedAt: performance.now(),
+          color: palette[current.active.type]
+        });
+      }
+      dispatch(resolvedAction);
+      if (current.status !== "running") return;
+      const effect = ACTION_EFFECTS[resolvedAction];
+      if (effect?.sound) effect.sound();
+      if (effect?.haptics) haptics();
+    },
+    [dispatch, haptics, palette, settings.holdEnabled, settings.reducedMotion, stateRef]
+  );
   const inputEnabled = menuView === "none" && !showScoreEntry && !showCheatEntry;
   const { startRepeat, stopRepeat, stopAll } = useInput({
     enabled: inputEnabled,
@@ -516,7 +527,8 @@ export const App = () => {
     }));
   }, [updateGoalsState]);
 
-  const arkanoidTouchEnabled = isTouchMode && state.mode === "arkanoid" && state.status === "running";
+  const arkanoidTouchEnabled =
+    isTouchMode && state.mode === "arkanoid" && state.status === "running";
   const doomPointerEnabled = state.mode === "doom" && state.status === "running";
   const modeTimeLeft = Math.max(0, state.modeTimer);
   const modeMinutes = Math.floor(modeTimeLeft / 60000);
@@ -622,9 +634,7 @@ export const App = () => {
                   onOpenAbout={() => setMenuView("about")}
                 />
               )}
-              {state.status === "paused" && (
-                <PauseOverlay onResume={() => handleAction("pause")} />
-              )}
+              {state.status === "paused" && <PauseOverlay onResume={() => handleAction("pause")} />}
               {state.status === "over" && (
                 <GameOverOverlay
                   result={state.result}

@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
 import type { PointerEvent } from "react";
+import { useEffect, useRef } from "react";
+
 import {
   BOARD_HEIGHT,
   BOARD_WIDTH,
@@ -63,9 +64,7 @@ const shade = (hex: string, amount: number) => {
 const shadeByFactor = (hex: string, factor: number) => {
   const { r, g, b } = parseHex(hex);
   const clamped = Math.max(0, Math.min(1, factor));
-  return `rgb(${Math.round(r * clamped)}, ${Math.round(g * clamped)}, ${Math.round(
-    b * clamped
-  )})`;
+  return `rgb(${Math.round(r * clamped)}, ${Math.round(g * clamped)}, ${Math.round(b * clamped)})`;
 };
 
 const roundedRect = (
@@ -146,7 +145,6 @@ const drawGhostTile = (
   ctx.restore();
 };
 
-
 export const GameCanvas = ({
   state,
   palette,
@@ -202,7 +200,8 @@ export const GameCanvas = ({
         styles.getPropertyValue("--board-grid-strong").trim() || themeRef.current.gridStrong,
       glow: styles.getPropertyValue("--board-glow").trim() || themeRef.current.glow,
       accent: styles.getPropertyValue("--accent").trim() || themeRef.current.accent,
-      accentStrong: styles.getPropertyValue("--accent-strong").trim() || themeRef.current.accentStrong,
+      accentStrong:
+        styles.getPropertyValue("--accent-strong").trim() || themeRef.current.accentStrong,
       accentWarm: styles.getPropertyValue("--accent-warm").trim() || themeRef.current.accentWarm,
       text: styles.getPropertyValue("--text").trim() || themeRef.current.text
     };
@@ -570,21 +569,11 @@ export const GameCanvas = ({
       ctx.fillStyle = "rgba(248, 113, 113, 0.35)";
       ctx.fillRect(14, height - hudHeight + 28, healthBarWidth, 6);
       ctx.fillStyle = "rgba(248, 113, 113, 0.9)";
-      ctx.fillRect(
-        14,
-        height - hudHeight + 28,
-        (healthBarWidth * state.doom.health) / 100,
-        6
-      );
+      ctx.fillRect(14, height - hudHeight + 28, (healthBarWidth * state.doom.health) / 100, 6);
       ctx.fillStyle = "rgba(56, 189, 248, 0.35)";
       ctx.fillRect(14, height - hudHeight + 50, armorBarWidth, 6);
       ctx.fillStyle = "rgba(56, 189, 248, 0.9)";
-      ctx.fillRect(
-        14,
-        height - hudHeight + 50,
-        (armorBarWidth * state.doom.armor) / 100,
-        6
-      );
+      ctx.fillRect(14, height - hudHeight + 50, (armorBarWidth * state.doom.armor) / 100, 6);
       ctx.restore();
 
       const gunWidth = width * 0.35;

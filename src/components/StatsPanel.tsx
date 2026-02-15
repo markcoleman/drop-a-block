@@ -1,4 +1,5 @@
 import clsx from "clsx";
+
 import type { GameMode, GameStatus } from "../engine/types";
 import type { GoalProgress } from "../utils/goals";
 

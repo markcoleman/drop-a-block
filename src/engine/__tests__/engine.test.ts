@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+
 import {
   ARKANOID_TRIGGER_LINES,
-  DOOM_TRIGGER_LINES,
+  BOARD_HEIGHT,
+  BOARD_WIDTH,
   BONUS_MULTIPLIER_START,
   BONUS_MULTIPLIER_STEP,
   BONUS_SPEED_FACTOR,
@@ -9,23 +11,22 @@ import {
   BONUS_TRIGGER_LINES,
   createEmptyBoard,
   createInitialState,
+  DOOM_TRIGGER_LINES,
   getDropInterval,
   getGhost,
   hardDrop,
-  launchBall,
-  movePaddle,
-  pauseGame,
-  resetGame,
   holdPiece,
   isValidPosition,
+  launchBall,
+  movePaddle,
   movePiece,
-  softDrop,
-  startGame,
+  pauseGame,
+  resetGame,
   rotatePiece,
-  tick,
-  BOARD_HEIGHT,
-  BOARD_WIDTH,
+  softDrop,
   SPRINT_TARGET_LINES,
+  startGame,
+  tick,
   ULTRA_DURATION
 } from "../engine";
 import { GameState, TetrominoType } from "../types";

@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  loadScores,
-  loadSettings,
-  resetScores,
-  saveScore,
-  saveSettings
-} from "../storage";
+
+import { loadScores, loadSettings, resetScores, saveScore, saveSettings } from "../storage";
 
 type MockStorage = {
   getItem: (key: string) => string | null;

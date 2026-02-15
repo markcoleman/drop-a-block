@@ -1,15 +1,10 @@
 import clsx from "clsx";
 import type { ReactNode } from "react";
+
 import type { PlayMode } from "../engine/types";
 import { MODE_LABELS, MODE_OPTIONS, MODE_UNLOCKS } from "../game/modes";
 import type { CheatFeedback, StartStep } from "../ui/types";
-import {
-  ArrowLeftIcon,
-  HelpIcon,
-  PlayIcon,
-  SettingsIcon,
-  TrophyIcon
-} from "./Icons";
+import { ArrowLeftIcon, HelpIcon, PlayIcon, SettingsIcon, TrophyIcon } from "./Icons";
 
 type StartOverlayProps = {
   startStep: StartStep;

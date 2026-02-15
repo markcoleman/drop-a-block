@@ -1,5 +1,5 @@
-import type { GameModifiers, PlayMode } from "../engine/types";
 import { SPRINT_TARGET_LINES, ULTRA_DURATION } from "../engine/engine";
+import type { GameModifiers, PlayMode } from "../engine/types";
 
 export type ModeOption = {
   id: PlayMode;
@@ -61,10 +61,7 @@ export const SECRET_MODES: SecretModeOption[] = [
   { id: "party", label: "Party Filter", desc: "Pulse the board with a color remix." }
 ];
 
-export const getUnlockedModes = (
-  totalPlays: number,
-  storedModes: PlayMode[] | undefined
-) => {
+export const getUnlockedModes = (totalPlays: number, storedModes: PlayMode[] | undefined) => {
   const unlocked = new Set<PlayMode>(storedModes ?? []);
   unlocked.add("marathon");
   if (totalPlays >= MODE_UNLOCKS.sprint.plays) unlocked.add("sprint");

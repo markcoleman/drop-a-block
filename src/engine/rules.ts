@@ -1,3 +1,4 @@
+import { cloneBoard, getBlocks } from "./board";
 import {
   ARKANOID_TRIGGER_LINES,
   BOARD_HEIGHT,
@@ -5,7 +6,6 @@ import {
   DOOM_TRIGGER_LINES,
   TETROMINO_INDEX
 } from "./constants";
-import { cloneBoard, getBlocks } from "./board";
 import type { GameModifiers, Piece } from "./types";
 
 export const DEFAULT_MODIFIERS: GameModifiers = {
@@ -34,7 +34,9 @@ export const getLockDelay = (modifiers: GameModifiers = DEFAULT_MODIFIERS) => {
 };
 
 export const getArkanoidTriggerLines = (modifiers: GameModifiers = DEFAULT_MODIFIERS) =>
-  modifiers.arcadeRush ? Math.max(6, Math.round(ARKANOID_TRIGGER_LINES * 0.6)) : ARKANOID_TRIGGER_LINES;
+  modifiers.arcadeRush
+    ? Math.max(6, Math.round(ARKANOID_TRIGGER_LINES * 0.6))
+    : ARKANOID_TRIGGER_LINES;
 
 export const getDoomTriggerLines = (modifiers: GameModifiers = DEFAULT_MODIFIERS) =>
   modifiers.arcadeRush ? Math.max(8, Math.round(DOOM_TRIGGER_LINES * 0.6)) : DOOM_TRIGGER_LINES;

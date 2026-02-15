@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { getActionForKey, isRepeatableAction } from "../controls";
 
 describe("controls", () => {

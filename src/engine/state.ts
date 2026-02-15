@@ -1,3 +1,5 @@
+import { createArkanoidState, tickArkanoid } from "./arkanoid";
+import { createEmptyBoard, isValidPosition } from "./board";
 import {
   BONUS_LINE_BONUS,
   BONUS_MULTIPLIER_START,
@@ -9,10 +11,10 @@ import {
   SPRINT_TARGET_LINES,
   ULTRA_DURATION
 } from "./constants";
-import { createEmptyBoard, isValidPosition } from "./board";
+import { createDoomState, createEmptyDoomState, tickDoom } from "./doom";
 import {
-  DEFAULT_MODIFIERS,
   clearLines,
+  DEFAULT_MODIFIERS,
   getArkanoidTriggerLines,
   getDoomTriggerLines,
   getDropInterval,
@@ -22,8 +24,6 @@ import {
   updateLevel
 } from "./rules";
 import { canMoveDown, movePiece, nextQueue, spawnPiece } from "./tetris";
-import { createArkanoidState, tickArkanoid } from "./arkanoid";
-import { createDoomState, createEmptyDoomState, tickDoom } from "./doom";
 import type { GameModifiers, GameState, PlayMode } from "./types";
 
 export const createInitialState = (
@@ -100,8 +100,7 @@ const lockPiece = (state: GameState): GameState => {
   const baseScore = scoreLineClear(cleared, state.level);
   let scoreDelta = baseScore;
   if (cleared > 0 && bonusActive) {
-    scoreDelta =
-      Math.round(baseScore * bonusMultiplier) + cleared * BONUS_LINE_BONUS * state.level;
+    scoreDelta = Math.round(baseScore * bonusMultiplier) + cleared * BONUS_LINE_BONUS * state.level;
     bonusMultiplier += cleared * BONUS_MULTIPLIER_STEP;
   }
   if (!bonusActive) {
