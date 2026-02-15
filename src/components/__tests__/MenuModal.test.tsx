@@ -65,3 +65,25 @@ it("shows help content when requested", () => {
 
   expect(screen.getByText(/Tight rotations and fast drops win/i)).toBeInTheDocument();
 });
+
+it("fires secret mode actions", async () => {
+  const baseProps = createBaseProps();
+
+  render(<MenuModal {...baseProps} view="secret" />);
+
+  const user = userEvent.setup();
+
+  await user.click(screen.getByRole("button", { name: /sprint/i }));
+  await user.click(screen.getByRole("button", { name: /unlock all modes/i }));
+  await user.click(screen.getByRole("button", { name: /reset mode unlocks/i }));
+  await user.click(screen.getByRole("button", { name: /turbo gravity/i }));
+  await user.click(screen.getByRole("button", { name: /remix fun/i }));
+  await user.click(screen.getByRole("button", { name: /clear fun modes/i }));
+
+  expect(baseProps.onUnlockMode).toHaveBeenCalledTimes(1);
+  expect(baseProps.onUnlockAllModes).toHaveBeenCalledTimes(1);
+  expect(baseProps.onResetModeUnlocks).toHaveBeenCalledTimes(1);
+  expect(baseProps.onToggleSecretMode).toHaveBeenCalledTimes(1);
+  expect(baseProps.onShuffleFunModes).toHaveBeenCalledTimes(1);
+  expect(baseProps.onClearFunModes).toHaveBeenCalledTimes(1);
+});
