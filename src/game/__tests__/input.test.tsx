@@ -11,6 +11,14 @@ import { useInput } from "../input";
 const baseSettings: Settings = {
   theme: "dark",
   palette: "default",
+  language: "en",
+  customTheme: {
+    name: "Custom Theme",
+    baseTheme: "liquid2026",
+    colors: {},
+    assets: {},
+    piecePalette: {}
+  },
   reducedMotion: false,
   sound: true,
   showHud: true,

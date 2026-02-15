@@ -1,8 +1,22 @@
-import type { PlayMode } from "../engine/types";
+import type { PlayMode, TetrominoType } from "../engine/types";
+import { type Language, SUPPORTED_LANGUAGES } from "../i18n/config";
+import {
+  createDefaultCustomTheme,
+  type CustomTheme,
+  THEME_ASSET_KEYS,
+  THEME_COLOR_KEYS,
+  THEME_IDS,
+  type ThemeAssetKey,
+  type ThemeColorKey,
+  type ThemeId,
+  type ThemeSelection
+} from "../ui/themes";
 
 export type Settings = {
-  theme: "dark" | "neon" | "retro";
+  theme: ThemeSelection;
   palette: "default" | "colorblind";
+  language: Language;
+  customTheme: CustomTheme;
   reducedMotion: boolean;
   sound: boolean;
   showHud: boolean;
@@ -30,12 +44,14 @@ export type GoalsState = {
 const SETTINGS_KEY = "dropablock:settings";
 const SCORES_KEY = "dropablock:scores";
 const GOALS_KEY = "dropablock:goals";
-const SETTINGS_SCHEMA_VERSION = 3;
+const SETTINGS_SCHEMA_VERSION = 4;
 const SCORES_SCHEMA_VERSION = 1;
 
 const defaultSettings: Settings = {
   theme: "dark",
   palette: "default",
+  language: "en",
+  customTheme: createDefaultCustomTheme(),
   reducedMotion: false,
   sound: true,
   showHud: true,
@@ -53,25 +69,71 @@ const defaultGoals: GoalsState = {
 };
 
 const PLAY_MODES: PlayMode[] = ["marathon", "sprint", "ultra"];
+const TETROMINO_TYPES: TetrominoType[] = ["I", "O", "T", "S", "Z", "J", "L"];
 
-const isTheme = (value: unknown): value is Settings["theme"] =>
-  value === "dark" || value === "neon" || value === "retro";
+const isTheme = (value: unknown): value is ThemeSelection =>
+  value === "custom" || (typeof value === "string" && THEME_IDS.includes(value as ThemeId));
 
 const isPalette = (value: unknown): value is Settings["palette"] =>
   value === "default" || value === "colorblind";
+
+const isLanguage = (value: unknown): value is Language =>
+  typeof value === "string" && SUPPORTED_LANGUAGES.includes(value as Language);
 
 const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
 
 const isNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object";
+
+const pickStringRecord = <TKey extends string>(
+  value: unknown,
+  allowedKeys: readonly TKey[]
+): Partial<Record<TKey, string>> => {
+  if (!isRecord(value)) return {};
+  const next: Partial<Record<TKey, string>> = {};
+  for (const key of allowedKeys) {
+    const candidate = value[key];
+    if (typeof candidate === "string" && candidate.trim()) {
+      next[key] = candidate.trim();
+    }
+  }
+  return next;
+};
+
+const normalizeCustomTheme = (value: unknown): CustomTheme => {
+  const fallback = createDefaultCustomTheme();
+  if (!isRecord(value)) return fallback;
+
+  const name =
+    typeof value.name === "string" && value.name.trim() ? value.name.trim() : fallback.name;
+  const baseTheme =
+    typeof value.baseTheme === "string" && THEME_IDS.includes(value.baseTheme as ThemeId)
+      ? (value.baseTheme as CustomTheme["baseTheme"])
+      : fallback.baseTheme;
+
+  return {
+    name,
+    baseTheme,
+    colors: pickStringRecord<ThemeColorKey>(value.colors, THEME_COLOR_KEYS),
+    assets: pickStringRecord<ThemeAssetKey>(value.assets, THEME_ASSET_KEYS),
+    piecePalette: pickStringRecord<TetrominoType>(value.piecePalette, TETROMINO_TYPES)
+  };
+};
+
 const normalizeSettings = (value: Partial<Settings>): Settings => {
   const rawTheme: string | undefined = typeof value.theme === "string" ? value.theme : undefined;
   const theme = isTheme(rawTheme) ? rawTheme : defaultSettings.theme;
   const legacyTheme = rawTheme === "light" ? "dark" : theme;
+  const customTheme = normalizeCustomTheme(value.customTheme);
+
   return {
-    theme: legacyTheme as Settings["theme"],
+    theme: legacyTheme,
     palette: isPalette(value.palette) ? value.palette : defaultSettings.palette,
+    language: isLanguage(value.language) ? value.language : defaultSettings.language,
+    customTheme,
     reducedMotion: isBoolean(value.reducedMotion)
       ? value.reducedMotion
       : defaultSettings.reducedMotion,

@@ -11,6 +11,7 @@ import {
   VISIBLE_ROWS
 } from "../engine/engine";
 import type { GameState, Piece } from "../engine/types";
+import { useI18n } from "../i18n";
 import type { PaletteMap } from "../ui/palettes";
 
 export type DropTrail = {
@@ -25,7 +26,7 @@ type GameCanvasProps = {
   palette: PaletteMap;
   dropTrail: DropTrail | null;
   reducedMotion: boolean;
-  theme: string;
+  themeKey: string;
   onPointerDown?: (event: PointerEvent<HTMLCanvasElement>) => void;
   onPointerMove?: (event: PointerEvent<HTMLCanvasElement>) => void;
   onPointerUp?: (event: PointerEvent<HTMLCanvasElement>) => void;
@@ -150,11 +151,12 @@ export const GameCanvas = ({
   palette,
   dropTrail,
   reducedMotion,
-  theme,
+  themeKey,
   onPointerDown,
   onPointerMove,
   onPointerUp
 }: GameCanvasProps) => {
+  const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const hasPointerHandlers = Boolean(onPointerDown || onPointerMove || onPointerUp);
   const spriteRef = useRef<{
@@ -175,21 +177,32 @@ export const GameCanvas = ({
   const lastClearRef = useRef(state.lastClear);
 
   useEffect(() => {
+    const styles = getComputedStyle(document.documentElement);
     const base = import.meta.env.BASE_URL ?? "/";
+    const fromVar = (key: string, fallback: string) => {
+      const value = styles
+        .getPropertyValue(key)
+        .trim()
+        .replace(/^['"]|['"]$/g, "");
+      return value || `${base}${fallback}`;
+    };
     const load = (name: string) => {
       const img = new Image();
-      img.src = `${base}sprites/doom/${name}`;
+      img.src = name;
       return img;
     };
     spriteRef.current = {
-      imp: [load("imp_1.png"), load("imp_2.png")],
+      imp: [
+        load(fromVar("--asset-doom-imp-1", "sprites/doom/imp_1.png")),
+        load(fromVar("--asset-doom-imp-2", "sprites/doom/imp_2.png"))
+      ],
       items: {
-        health: load("item_health.png"),
-        armor: load("item_armor.png"),
-        ammo: load("item_ammo.png")
+        health: load(fromVar("--asset-doom-item-health", "sprites/doom/item_health.png")),
+        armor: load(fromVar("--asset-doom-item-armor", "sprites/doom/item_armor.png")),
+        ammo: load(fromVar("--asset-doom-item-ammo", "sprites/doom/item_ammo.png"))
       }
     };
-  }, []);
+  }, [themeKey]);
 
   useEffect(() => {
     const styles = getComputedStyle(document.documentElement);
@@ -205,7 +218,7 @@ export const GameCanvas = ({
       accentWarm: styles.getPropertyValue("--accent-warm").trim() || themeRef.current.accentWarm,
       text: styles.getPropertyValue("--text").trim() || themeRef.current.text
     };
-  }, [theme]);
+  }, [themeKey]);
 
   useEffect(() => {
     if (state.lastClear === lastClearRef.current) return;
@@ -711,7 +724,7 @@ export const GameCanvas = ({
         clearRef.current = null;
       }
     }
-  }, [dropTrail, palette, reducedMotion, state, theme]);
+  }, [dropTrail, palette, reducedMotion, state, themeKey]);
 
   const handlePointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
     if (!hasPointerHandlers) return;
@@ -743,7 +756,7 @@ export const GameCanvas = ({
       height={640}
       className="game-canvas"
       role="img"
-      aria-label="Tetris game board"
+      aria-label={t("app.boardLabel", undefined, "Tetris game board")}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

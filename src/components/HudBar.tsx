@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { GameMode, GameStatus, PlayMode } from "../engine/types";
+import { useI18n } from "../i18n";
 import { IconButton } from "./IconButton";
 import { EyeOffIcon, PauseIcon, SettingsIcon } from "./Icons";
 
@@ -54,6 +55,8 @@ export const HudBar = ({
   onOpenSettings,
   onHideHud
 }: HudBarProps) => {
+  const { t } = useI18n();
+
   return (
     <div className="hud-bar">
       <div className="hud-main">
@@ -62,37 +65,45 @@ export const HudBar = ({
           <div className="hud-mode">
             <span className="hud-mode-label">{modeLabel}</span>
             {playMode === "sprint" && (
-              <span className="hud-mode-sub">{sprintLinesLeft} lines left</span>
+              <span className="hud-mode-sub">{t("hud.linesLeft", { count: sprintLinesLeft })}</span>
             )}
             {playMode === "ultra" && (
               <span className="hud-mode-sub">
-                {modeMinutes}:{modeSeconds} remaining
+                {t("hud.remaining", { minutes: modeMinutes, seconds: modeSeconds })}
               </span>
             )}
           </div>
         </div>
         <div className="hud-stats">
-          <HudStat label="Score" value={score.toLocaleString()} className="hud-primary" />
-          <HudStat label="Level" value={level} className="hud-primary" />
-          <HudStat label="Lines" value={lines} className="hud-primary" />
+          <HudStat label={t("hud.score")} value={score.toLocaleString()} className="hud-primary" />
+          <HudStat label={t("hud.level")} value={level} className="hud-primary" />
+          <HudStat label={t("hud.lines")} value={lines} className="hud-primary" />
           {mode === "tetris" && (
-            <HudStat label="Doom" value={`${doomLinesToReady} lines`} className="hud-secondary" />
+            <HudStat
+              label={t("hud.doom")}
+              value={t("hud.doomLines", { count: doomLinesToReady })}
+              className="hud-secondary"
+            />
           )}
-          <HudStat label="High" value={highScore.toLocaleString()} className="hud-secondary" />
+          <HudStat
+            label={t("hud.high")}
+            value={highScore.toLocaleString()}
+            className="hud-secondary"
+          />
         </div>
       </div>
       <div className="hud-actions">
         <IconButton
           className="hud-button"
-          label={status === "paused" ? "Resume" : "Pause"}
+          label={status === "paused" ? t("hud.resume") : t("hud.pause")}
           onClick={onPause}
         >
           <PauseIcon />
         </IconButton>
-        <IconButton className="hud-button" label="Open settings" onClick={onOpenSettings}>
+        <IconButton className="hud-button" label={t("hud.openSettings")} onClick={onOpenSettings}>
           <SettingsIcon />
         </IconButton>
-        <IconButton className="hud-button" label="Hide HUD" onClick={onHideHud}>
+        <IconButton className="hud-button" label={t("hud.hideHud")} onClick={onHideHud}>
           <EyeOffIcon />
         </IconButton>
       </div>

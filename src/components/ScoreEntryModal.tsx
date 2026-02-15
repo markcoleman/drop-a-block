@@ -1,3 +1,4 @@
+import { useI18n } from "../i18n";
 import { Modal } from "./Modal";
 
 type ScoreEntryModalProps = {
@@ -7,19 +8,21 @@ type ScoreEntryModalProps = {
 };
 
 export const ScoreEntryModal = ({ initials, onChange, onSave }: ScoreEntryModalProps) => {
+  const { t } = useI18n();
+
   return (
     <Modal>
-      <h2>New High Score</h2>
-      <p>Enter your initials (3 letters).</p>
+      <h2>{t("scoreEntry.newHighScore")}</h2>
+      <p>{t("scoreEntry.enterInitials")}</p>
       <input
         value={initials}
         onChange={(event) => onChange(event.target.value)}
         maxLength={3}
         placeholder="AAA"
-        aria-label="Initials"
+        aria-label={t("scoreEntry.initials")}
       />
       <button className="primary" onClick={onSave}>
-        Save Score
+        {t("scoreEntry.saveScore")}
       </button>
     </Modal>
   );

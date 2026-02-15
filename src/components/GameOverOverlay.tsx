@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { useI18n } from "../i18n";
+
 type GameOverOverlayProps = {
   result: "win" | "lose" | null;
   modeLabel: string;
@@ -26,30 +28,40 @@ export const GameOverOverlay = ({
   onRestart,
   onBackToMenu
 }: GameOverOverlayProps) => {
+  const { t } = useI18n();
+
   return (
     <div className="overlay">
       <div className="game-over-panel">
         <div>
-          <p className="eyebrow">Run Summary</p>
-          <h2>{result === "win" ? "Mode Complete" : "Game Over"}</h2>
+          <p className="eyebrow">{t("gameover.runSummary")}</p>
+          <h2>{result === "win" ? t("gameover.modeComplete") : t("gameover.gameOver")}</h2>
           <p className="muted">
             {result === "win"
-              ? `${modeLabel} wrapped with ${score.toLocaleString()} points.`
-              : `Final score ${score.toLocaleString()}.`}
+              ? t(
+                  "gameover.winSummary",
+                  { mode: modeLabel, score: score.toLocaleString() },
+                  `${modeLabel} wrapped with ${score.toLocaleString()} points.`
+                )
+              : t(
+                  "gameover.loseSummary",
+                  { score: score.toLocaleString() },
+                  `Final score ${score.toLocaleString()}.`
+                )}
           </p>
         </div>
         <div className="summary-grid">
-          <SummaryCard label="Score" value={score.toLocaleString()} />
-          <SummaryCard label="Lines" value={lines} />
-          <SummaryCard label="Level" value={level} />
-          <SummaryCard label="Mode" value={modeLabel} />
+          <SummaryCard label={t("gameover.score")} value={score.toLocaleString()} />
+          <SummaryCard label={t("gameover.lines")} value={lines} />
+          <SummaryCard label={t("gameover.level")} value={level} />
+          <SummaryCard label={t("gameover.mode")} value={modeLabel} />
         </div>
         <div className="summary-actions">
           <button type="button" className="primary" onClick={onRestart}>
-            Play Again
+            {t("gameover.playAgain")}
           </button>
           <button type="button" className="ghost" onClick={onBackToMenu}>
-            Back to Menu
+            {t("gameover.backToMenu")}
           </button>
         </div>
       </div>

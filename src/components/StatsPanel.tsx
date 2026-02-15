@@ -1,6 +1,7 @@
 import clsx from "clsx";
 
 import type { GameMode, GameStatus } from "../engine/types";
+import { useI18n } from "../i18n";
 import type { GoalProgress } from "../utils/goals";
 
 type StatsPanelProps = {
@@ -28,28 +29,30 @@ export const StatsPanel = ({
   nextLevelTarget,
   displayGoals
 }: StatsPanelProps) => {
+  const { t } = useI18n();
+
   return (
     <div className="panel stats-panel">
-      <h2>Progress</h2>
+      <h2>{t("stats.progress")}</h2>
       {mode === "arkanoid" && status === "running" && (
         <div className="mode-banner" aria-live="polite">
-          <span className="mode-label">Arkanoid</span>
+          <span className="mode-label">{t("stats.arkanoid")}</span>
           <span className="mode-timer">{arkanoidSeconds}s</span>
-          <span className="mode-hint">Break blocks for points.</span>
+          <span className="mode-hint">{t("stats.breakBlocks")}</span>
         </div>
       )}
       {mode === "doom" && status === "running" && (
         <div className="mode-banner doom" aria-live="polite">
-          <span className="mode-label">Doom Run</span>
+          <span className="mode-label">{t("stats.doomRun")}</span>
           <span className="mode-timer">{doomSeconds}s</span>
-          <span className="mode-hint">Find the exit. WASD + mouse, click to shoot.</span>
+          <span className="mode-hint">{t("stats.findExit")}</span>
         </div>
       )}
       <div className="goals-merged">
         <div className="goal-progress">
           <div className="goal-header">
-            <span>Next level</span>
-            <strong>{linesToNextLevel} lines</strong>
+            <span>{t("stats.nextLevel")}</span>
+            <strong>{t("stats.lines", { count: linesToNextLevel })}</strong>
           </div>
           <div
             className="progress-track"
@@ -64,7 +67,7 @@ export const StatsPanel = ({
             />
           </div>
           <span className="muted">
-            Level {level + 1} unlocks at {nextLevelTarget} lines.
+            {t("stats.levelUnlock", { level: level + 1, lines: nextLevelTarget })}
           </span>
         </div>
         <div className="goal-list" aria-live="polite">
@@ -74,7 +77,7 @@ export const StatsPanel = ({
               <div className="goal-meta">
                 <span>
                   {item.achieved
-                    ? "Completed"
+                    ? t("stats.completed")
                     : `${item.value.toLocaleString()} / ${item.goal.target.toLocaleString()}`}
                 </span>
                 <span>{Math.round(item.progress * 100)}%</span>
