@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
 import type { PointerEvent } from "react";
+import { useEffect, useRef } from "react";
+
 import {
   BOARD_HEIGHT,
   BOARD_WIDTH,
@@ -63,9 +64,7 @@ const shade = (hex: string, amount: number) => {
 const shadeByFactor = (hex: string, factor: number) => {
   const { r, g, b } = parseHex(hex);
   const clamped = Math.max(0, Math.min(1, factor));
-  return `rgb(${Math.round(r * clamped)}, ${Math.round(g * clamped)}, ${Math.round(
-    b * clamped
-  )})`;
+  return `rgb(${Math.round(r * clamped)}, ${Math.round(g * clamped)}, ${Math.round(b * clamped)})`;
 };
 
 const roundedRect = (
@@ -128,16 +127,23 @@ const drawGhostTile = (
   color: string
 ) => {
   ctx.save();
-  ctx.globalAlpha = 0.4;
-  ctx.setLineDash([size * 0.3, size * 0.2]);
-  ctx.lineWidth = Math.max(1, size * 0.08);
-  ctx.strokeStyle = toRgba(parseHex(color), 0.35);
-  roundedRect(ctx, x + size * 0.08, y + size * 0.08, size * 0.84, size * 0.84, size * 0.2);
+  ctx.globalAlpha = 0.6;
+  ctx.setLineDash([size * 0.3, size * 0.18]);
+  ctx.lineWidth = Math.max(1, size * 0.1);
+  ctx.shadowColor = toRgba(parseHex(color), 0.35);
+  ctx.shadowBlur = size * 0.18;
+  ctx.strokeStyle = toRgba(parseHex(color), 0.55);
+  roundedRect(ctx, x + size * 0.06, y + size * 0.06, size * 0.88, size * 0.88, size * 0.22);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.setLineDash([]);
+  ctx.lineWidth = Math.max(1, size * 0.05);
+  ctx.strokeStyle = toRgba(parseHex("#ffffff"), 0.25);
+  roundedRect(ctx, x + size * 0.12, y + size * 0.12, size * 0.76, size * 0.76, size * 0.18);
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.restore();
 };
-
 
 export const GameCanvas = ({
   state,
@@ -194,7 +200,8 @@ export const GameCanvas = ({
         styles.getPropertyValue("--board-grid-strong").trim() || themeRef.current.gridStrong,
       glow: styles.getPropertyValue("--board-glow").trim() || themeRef.current.glow,
       accent: styles.getPropertyValue("--accent").trim() || themeRef.current.accent,
-      accentStrong: styles.getPropertyValue("--accent-strong").trim() || themeRef.current.accentStrong,
+      accentStrong:
+        styles.getPropertyValue("--accent-strong").trim() || themeRef.current.accentStrong,
       accentWarm: styles.getPropertyValue("--accent-warm").trim() || themeRef.current.accentWarm,
       text: styles.getPropertyValue("--text").trim() || themeRef.current.text
     };
@@ -562,21 +569,11 @@ export const GameCanvas = ({
       ctx.fillStyle = "rgba(248, 113, 113, 0.35)";
       ctx.fillRect(14, height - hudHeight + 28, healthBarWidth, 6);
       ctx.fillStyle = "rgba(248, 113, 113, 0.9)";
-      ctx.fillRect(
-        14,
-        height - hudHeight + 28,
-        (healthBarWidth * state.doom.health) / 100,
-        6
-      );
+      ctx.fillRect(14, height - hudHeight + 28, (healthBarWidth * state.doom.health) / 100, 6);
       ctx.fillStyle = "rgba(56, 189, 248, 0.35)";
       ctx.fillRect(14, height - hudHeight + 50, armorBarWidth, 6);
       ctx.fillStyle = "rgba(56, 189, 248, 0.9)";
-      ctx.fillRect(
-        14,
-        height - hudHeight + 50,
-        (armorBarWidth * state.doom.armor) / 100,
-        6
-      );
+      ctx.fillRect(14, height - hudHeight + 50, (armorBarWidth * state.doom.armor) / 100, 6);
       ctx.restore();
 
       const gunWidth = width * 0.35;

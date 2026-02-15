@@ -24,8 +24,7 @@ import {
 } from "./constants";
 import type { ArkanoidPowerup, ArkanoidPowerupType, ArkanoidState, GameState } from "./types";
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(Math.max(value, min), max);
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 export const createArkanoidState = (): ArkanoidState => {
   const paddleWidth = ARKANOID_PADDLE_WIDTH;
@@ -205,18 +204,14 @@ export const tickArkanoid = (state: GameState, deltaMs: number): GameState => {
     nextArkanoid = {
       ...nextArkanoid,
       launchDelay,
-      balls:
-        launchDelay > 0
-          ? centerBallOnPaddle(nextArkanoid).balls
-          : nextArkanoid.balls
+      balls: launchDelay > 0 ? centerBallOnPaddle(nextArkanoid).balls : nextArkanoid.balls
     };
     return { ...state, arkanoid: nextArkanoid };
   }
 
   const spawnPowerup = (cellX: number, cellY: number) => {
     if (Math.random() > ARKANOID_POWERUP_DROP_CHANCE) return;
-    const type =
-      ARKANOID_POWERUP_TYPES[Math.floor(Math.random() * ARKANOID_POWERUP_TYPES.length)];
+    const type = ARKANOID_POWERUP_TYPES[Math.floor(Math.random() * ARKANOID_POWERUP_TYPES.length)];
     const x = BOARD_WIDTH - 1 - cellX + 0.5;
     const y = VISIBLE_ROWS - 1 - (cellY - ARKANOID_VISIBLE_START) + 0.5;
     const powerup: ArkanoidPowerup = {
@@ -329,8 +324,7 @@ export const tickArkanoid = (state: GameState, deltaMs: number): GameState => {
       ) {
         breakBrick(cellX, cellY);
         const prevCellX = BOARD_WIDTH - 1 - Math.floor(prevX);
-        const prevCellY =
-          ARKANOID_VISIBLE_START + (VISIBLE_ROWS - 1 - Math.floor(prevY));
+        const prevCellY = ARKANOID_VISIBLE_START + (VISIBLE_ROWS - 1 - Math.floor(prevY));
         const hitVertical = prevCellY !== cellY;
         const hitHorizontal = prevCellX !== cellX;
         if (hitVertical && !hitHorizontal) {
@@ -411,7 +405,6 @@ export const tickArkanoid = (state: GameState, deltaMs: number): GameState => {
 
   nextArkanoid = {
     ...nextArkanoid,
-    balls: nextBalls,
     powerups: nextPowerups,
     lasers,
     powerupTimers,
@@ -425,7 +418,13 @@ export const tickArkanoid = (state: GameState, deltaMs: number): GameState => {
   }
 
   if (!hasVisibleBricks(board)) {
-    return { ...nextState, mode: "tetris", score: nextState.score + 150, fallAccumulator: 0, lockTimer: 0 };
+    return {
+      ...nextState,
+      mode: "tetris",
+      score: nextState.score + 150,
+      fallAccumulator: 0,
+      lockTimer: 0
+    };
   }
 
   return nextState;

@@ -1,28 +1,28 @@
+import { cloneBoard } from "./board";
 import {
   BOARD_HEIGHT,
   BOARD_WIDTH,
+  DOOM_AMMO_MAX,
+  DOOM_AMMO_PICKUP,
+  DOOM_AMMO_START,
+  DOOM_ARMOR_MAX,
+  DOOM_ARMOR_PICKUP,
+  DOOM_ARMOR_START,
   DOOM_DURATION,
   DOOM_ENEMY_COOLDOWN,
   DOOM_ENEMY_DAMAGE,
   DOOM_ENEMY_RADIUS,
   DOOM_ENEMY_SPEED,
+  DOOM_EXIT_BONUS,
+  DOOM_EXIT_RADIUS,
   DOOM_HEALTH_MAX,
   DOOM_HEALTH_PICKUP,
   DOOM_HEALTH_START,
-  DOOM_ARMOR_MAX,
-  DOOM_ARMOR_PICKUP,
-  DOOM_ARMOR_START,
-  DOOM_AMMO_MAX,
-  DOOM_AMMO_START,
-  DOOM_AMMO_PICKUP,
-  DOOM_EXIT_RADIUS,
-  DOOM_EXIT_BONUS,
   DOOM_PICKUP_RADIUS,
   DOOM_PLAYER_SPEED,
   DOOM_SHOT_COOLDOWN,
   VISIBLE_ROWS
 } from "./constants";
-import { cloneBoard } from "./board";
 import type { DoomEnemy, DoomInput, DoomItem, DoomItemType, DoomState, GameState } from "./types";
 
 const EMPTY_INPUT: DoomInput = {
@@ -83,7 +83,7 @@ const carveSpawn = (board: number[][], gridX: number, gridY: number) => {
   return next;
 };
 
-const pickExit = (board: number[][]) => {
+const pickExit = (_board: number[][]) => {
   const gridY = VISIBLE_ROWS - 1;
   const candidates: number[] = [];
   for (let x = 0; x < BOARD_WIDTH; x += 1) {

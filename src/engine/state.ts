@@ -1,8 +1,20 @@
-import { SPAWN_POSITION, SPRINT_TARGET_LINES, ULTRA_DURATION } from "./constants";
+import { createArkanoidState, tickArkanoid } from "./arkanoid";
 import { createEmptyBoard, isValidPosition } from "./board";
 import {
-  DEFAULT_MODIFIERS,
+  BONUS_LINE_BONUS,
+  BONUS_MULTIPLIER_START,
+  BONUS_MULTIPLIER_STEP,
+  BONUS_SPEED_FACTOR,
+  BONUS_TIME_PER_TRIGGER,
+  BONUS_TRIGGER_LINES,
+  SPAWN_POSITION,
+  SPRINT_TARGET_LINES,
+  ULTRA_DURATION
+} from "./constants";
+import { createDoomState, createEmptyDoomState, tickDoom } from "./doom";
+import {
   clearLines,
+  DEFAULT_MODIFIERS,
   getArkanoidTriggerLines,
   getDoomTriggerLines,
   getDropInterval,
@@ -12,8 +24,6 @@ import {
   updateLevel
 } from "./rules";
 import { canMoveDown, movePiece, nextQueue, spawnPiece } from "./tetris";
-import { createArkanoidState, tickArkanoid } from "./arkanoid";
-import { createDoomState, createEmptyDoomState, tickDoom } from "./doom";
 import type { GameModifiers, GameState, PlayMode } from "./types";
 
 export const createInitialState = (
@@ -33,6 +43,8 @@ export const createInitialState = (
     lines: 0,
     arkanoidMeter: 0,
     doomMeter: 0,
+    bonusTimeLeft: 0,
+    bonusMultiplier: 1,
     status: "start",
     mode: "tetris",
     playMode,
@@ -75,6 +87,25 @@ const lockPiece = (state: GameState): GameState => {
   const arkanoidRemainder = arkanoidMeter % arkanoidTrigger;
   const doomRemainder = doomMeter % doomTrigger;
   const doomReady = cleared > 0 && doomMeter >= doomTrigger;
+  const bonusChunks = Math.floor(cleared / BONUS_TRIGGER_LINES);
+  const bonusTriggered = bonusChunks > 0;
+  const bonusTimeLeft = bonusTriggered
+    ? state.bonusTimeLeft + BONUS_TIME_PER_TRIGGER * bonusChunks
+    : state.bonusTimeLeft;
+  const bonusActive = bonusTimeLeft > 0;
+  let bonusMultiplier = state.bonusMultiplier;
+  if (bonusTriggered && bonusMultiplier < BONUS_MULTIPLIER_START) {
+    bonusMultiplier = BONUS_MULTIPLIER_START;
+  }
+  const baseScore = scoreLineClear(cleared, state.level);
+  let scoreDelta = baseScore;
+  if (cleared > 0 && bonusActive) {
+    scoreDelta = Math.round(baseScore * bonusMultiplier) + cleared * BONUS_LINE_BONUS * state.level;
+    bonusMultiplier += cleared * BONUS_MULTIPLIER_STEP;
+  }
+  if (!bonusActive) {
+    bonusMultiplier = 1;
+  }
   const nextState: GameState = {
     ...state,
     board,
@@ -84,12 +115,14 @@ const lockPiece = (state: GameState): GameState => {
     lines: totalLines,
     level,
     dropInterval: getDropInterval(level, state.modifiers),
-    score: state.score + scoreLineClear(cleared, state.level),
+    score: state.score + scoreDelta,
     fallAccumulator: 0,
     lockTimer: 0,
     lastClear: cleared,
     arkanoidMeter: arkanoidRemainder,
-    doomMeter: doomRemainder
+    doomMeter: doomRemainder,
+    bonusTimeLeft,
+    bonusMultiplier
   };
   if (state.playMode === "sprint" && totalLines >= state.targetLines) {
     return { ...nextState, status: "over", result: "win" };
@@ -194,12 +227,27 @@ export const forceDoom = (state: GameState): GameState => {
   };
 };
 
+const tickBonusTimer = (state: GameState, deltaMs: number): GameState => {
+  if (state.mode !== "tetris" || state.bonusTimeLeft <= 0) return state;
+  const bonusTimeLeft = Math.max(0, state.bonusTimeLeft - deltaMs);
+  if (bonusTimeLeft === state.bonusTimeLeft) return state;
+  return {
+    ...state,
+    bonusTimeLeft,
+    bonusMultiplier: bonusTimeLeft === 0 ? 1 : state.bonusMultiplier
+  };
+};
+
 const tickTetris = (state: GameState, deltaMs: number): GameState => {
+  const effectiveInterval =
+    state.bonusTimeLeft > 0
+      ? Math.max(60, Math.round(state.dropInterval * BONUS_SPEED_FACTOR))
+      : state.dropInterval;
   let next: GameState = { ...state, fallAccumulator: state.fallAccumulator + deltaMs };
-  while (next.fallAccumulator >= next.dropInterval) {
+  while (next.fallAccumulator >= effectiveInterval) {
     const moved = movePiece(next, { x: 0, y: 1 });
     if (moved === next) break;
-    next = { ...moved, fallAccumulator: next.fallAccumulator - next.dropInterval };
+    next = { ...moved, fallAccumulator: next.fallAccumulator - effectiveInterval };
   }
   if (canMoveDown(next)) {
     next = { ...next, lockTimer: 0 };
@@ -215,9 +263,9 @@ const tickTetris = (state: GameState, deltaMs: number): GameState => {
 
 export const tick = (state: GameState, deltaMs: number): GameState => {
   if (state.status !== "running") return state;
-  let nextState = state;
-  if (state.playMode === "ultra") {
-    const nextTimer = Math.max(0, state.modeTimer - deltaMs);
+  let nextState = tickBonusTimer(state, deltaMs);
+  if (nextState.playMode === "ultra") {
+    const nextTimer = Math.max(0, nextState.modeTimer - deltaMs);
     nextState = { ...nextState, modeTimer: nextTimer };
     if (nextTimer === 0) {
       return { ...nextState, status: "over", result: "win" };

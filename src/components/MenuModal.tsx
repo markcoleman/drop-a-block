@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import type { GameModifiers, PlayMode } from "../engine/types";
+
 import {
   ARKANOID_TRIGGER_LINES,
   BOARD_HEIGHT,
@@ -10,10 +10,11 @@ import {
   ULTRA_DURATION,
   VISIBLE_ROWS
 } from "../engine/engine";
+import type { GameModifiers, PlayMode } from "../engine/types";
 import { MODE_OPTIONS, MODE_UNLOCKS, SECRET_MODES } from "../game/modes";
-import type { Settings, HighScore } from "../utils/storage";
-import type { MenuView } from "../ui/types";
 import type { PaletteMap } from "../ui/palettes";
+import type { MenuView } from "../ui/types";
+import type { HighScore, Settings } from "../utils/storage";
 import { HighScores } from "./HighScores";
 import { IconButton } from "./IconButton";
 import { CloseIcon } from "./Icons";
@@ -42,7 +43,8 @@ const HelpPanel = ({ holdEnabled }: { holdEnabled: boolean }) => {
   return (
     <div className="help-panel">
       <p className="muted">
-        Tight rotations and fast drops win. Use Hold to save a rescue piece, and watch the next queue.
+        Tight rotations and fast drops win. Use Hold to save a rescue piece, and watch the next
+        queue.
       </p>
       <ul className="help-list">
         <li>
@@ -60,14 +62,16 @@ const HelpPanel = ({ holdEnabled }: { holdEnabled: boolean }) => {
           </li>
         )}
         <li>
-          <strong>Arkanoid mode</strong> triggers every {ARKANOID_TRIGGER_LINES} lines for 30 seconds.
+          <strong>Arkanoid mode</strong> triggers every {ARKANOID_TRIGGER_LINES} lines for 30
+          seconds.
         </li>
         <li>
           <strong>Doom run</strong> triggers every {DOOM_TRIGGER_LINES} lines. You get{" "}
           {Math.round(DOOM_DURATION / 1000)} seconds to clear a path to the exit with WASD + mouse.
         </li>
         <li>
-          <strong>Doom pickups</strong> restore health, armor, and ammo. Enemies can drain your health.
+          <strong>Doom pickups</strong> restore health, armor, and ammo. Enemies can drain your
+          health.
         </li>
         <li>
           <strong>Modes</strong> include Normal (Marathon), Sprint ({SPRINT_TARGET_LINES} lines),
@@ -177,8 +181,8 @@ const AboutPanel = ({ palette }: { palette: PaletteMap }) => {
   return (
     <div className="help-panel">
       <p className="muted about-copy">
-        Board size {BOARD_WIDTH}x{VISIBLE_ROWS} with {BOARD_HEIGHT - VISIBLE_ROWS} hidden spawn rows.
-        Colors are mapped per tetromino.
+        Board size {BOARD_WIDTH}x{VISIBLE_ROWS} with {BOARD_HEIGHT - VISIBLE_ROWS} hidden spawn
+        rows. Colors are mapped per tetromino.
       </p>
       <div className="legend about-legend">
         {Object.entries(palette).map(([key, value]) => (

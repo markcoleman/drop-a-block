@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
+
 import type { GameMode, GameStatus, PlayMode } from "../engine/types";
-import { PauseIcon, SettingsIcon } from "./Icons";
 import { IconButton } from "./IconButton";
+import { PauseIcon, SettingsIcon } from "./Icons";
 
 type HudBarProps = {
   status: GameStatus;
@@ -20,8 +21,16 @@ type HudBarProps = {
   onOpenSettings: () => void;
 };
 
-const HudStat = ({ label, value }: { label: string; value: ReactNode }) => (
-  <div className="hud-card">
+const HudStat = ({
+  label,
+  value,
+  className
+}: {
+  label: string;
+  value: ReactNode;
+  className?: string;
+}) => (
+  <div className={className ? `hud-card ${className}` : "hud-card"}>
     <span className="label">{label}</span>
     <strong>{value}</strong>
   </div>
@@ -61,11 +70,13 @@ export const HudBar = ({
           </div>
         </div>
         <div className="hud-stats">
-          <HudStat label="Score" value={score.toLocaleString()} />
-          <HudStat label="Level" value={level} />
-          <HudStat label="Lines" value={lines} />
-          {mode === "tetris" && <HudStat label="Doom" value={`${doomLinesToReady} lines`} />}
-          <HudStat label="High" value={highScore.toLocaleString()} />
+          <HudStat label="Score" value={score.toLocaleString()} className="hud-primary" />
+          <HudStat label="Level" value={level} className="hud-primary" />
+          <HudStat label="Lines" value={lines} className="hud-primary" />
+          {mode === "tetris" && (
+            <HudStat label="Doom" value={`${doomLinesToReady} lines`} className="hud-secondary" />
+          )}
+          <HudStat label="High" value={highScore.toLocaleString()} className="hud-secondary" />
         </div>
       </div>
       <div className="hud-actions">

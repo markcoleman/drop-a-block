@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef } from "react";
 import type { MutableRefObject } from "react";
+import { useCallback, useEffect, useRef } from "react";
+
 import type { GameState, GameStatus } from "../engine/types";
-import type { Settings } from "../utils/storage";
 import { isEditableTarget } from "../utils/dom";
+import type { Settings } from "../utils/storage";
 import type { Action } from "./actions";
 import { getActionForKey, isRepeatableAction, RepeatableAction } from "./controls";
 
@@ -77,8 +78,7 @@ export const useInput = ({
   const isRepeating = useCallback(
     (direction: RepeatableAction) =>
       Boolean(
-        inputTimers.current[direction] ||
-          inputTimers.current[`${direction}Interval` as TimerKey]
+        inputTimers.current[direction] || inputTimers.current[`${direction}Interval` as TimerKey]
       ),
     []
   );
@@ -222,7 +222,7 @@ export const useInput = ({
       document.removeEventListener("visibilitychange", handleVisibility);
       stopAll();
     };
-  }, [allowHold, enabled, fireAction, startRepeat, stopAll, stopRepeat]);
+  }, [allowHold, enabled, fireAction, startRepeat, stateRef, stopAll, stopRepeat]);
 
   return { startRepeat, stopRepeat, stopAll };
 };

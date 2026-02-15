@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+
 import { TetrominoType } from "../engine/types";
 import type { PaletteMap } from "../ui/palettes";
 
@@ -67,11 +68,7 @@ export const MiniGrid = ({
           <span
             key={`${row}-${col}`}
             className={filled ? "mini-cell filled" : "mini-cell"}
-            style={
-              filled
-                ? ({ "--tile-color": color } as CSSProperties)
-                : undefined
-            }
+            style={filled ? ({ "--tile-color": color } as CSSProperties) : undefined}
           />
         );
       })}

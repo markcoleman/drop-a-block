@@ -1,11 +1,18 @@
-import { defineConfig } from "vite";
+import { fileURLToPath } from "node:url";
+
 import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 const basePath = process.env.BASE_PATH ?? "/";
 
 export default defineConfig({
   base: basePath,
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url))
+    }
+  },
   plugins: [
     react(),
     VitePWA({
