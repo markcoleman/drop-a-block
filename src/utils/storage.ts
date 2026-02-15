@@ -5,6 +5,8 @@ export type Settings = {
   palette: "default" | "colorblind";
   reducedMotion: boolean;
   sound: boolean;
+  showHud: boolean;
+  mobileControls: boolean;
   das: number;
   arr: number;
   holdEnabled: boolean;
@@ -36,6 +38,8 @@ const defaultSettings: Settings = {
   palette: "default",
   reducedMotion: false,
   sound: true,
+  showHud: true,
+  mobileControls: true,
   das: 150,
   arr: 50,
   holdEnabled: true
@@ -62,8 +66,7 @@ const isNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
 
 const normalizeSettings = (value: Partial<Settings>): Settings => {
-  const rawTheme: string | undefined =
-    typeof value.theme === "string" ? value.theme : undefined;
+  const rawTheme: string | undefined = typeof value.theme === "string" ? value.theme : undefined;
   const theme = isTheme(rawTheme) ? rawTheme : defaultSettings.theme;
   const legacyTheme = rawTheme === "light" ? "dark" : theme;
   return {
@@ -73,6 +76,10 @@ const normalizeSettings = (value: Partial<Settings>): Settings => {
       ? value.reducedMotion
       : defaultSettings.reducedMotion,
     sound: isBoolean(value.sound) ? value.sound : defaultSettings.sound,
+    showHud: isBoolean(value.showHud) ? value.showHud : defaultSettings.showHud,
+    mobileControls: isBoolean(value.mobileControls)
+      ? value.mobileControls
+      : defaultSettings.mobileControls,
     das: isNumber(value.das) ? value.das : defaultSettings.das,
     arr: isNumber(value.arr) ? value.arr : defaultSettings.arr,
     holdEnabled: isBoolean(value.holdEnabled) ? value.holdEnabled : defaultSettings.holdEnabled
@@ -106,9 +113,7 @@ export const loadScores = (): HighScore[] => {
   const raw = localStorage.getItem(SCORES_KEY);
   if (!raw) return [];
   try {
-    const parsed = JSON.parse(raw) as
-      | HighScore[]
-      | { version: number; entries?: HighScore[] };
+    const parsed = JSON.parse(raw) as HighScore[] | { version: number; entries?: HighScore[] };
     if (Array.isArray(parsed)) return parsed;
     if (parsed && typeof parsed === "object" && Array.isArray(parsed.entries)) {
       return parsed.entries;
@@ -121,9 +126,7 @@ export const loadScores = (): HighScore[] => {
 
 export const saveScore = (entry: HighScore) => {
   const scores = loadScores();
-  const next = [...scores, entry]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10);
+  const next = [...scores, entry].sort((a, b) => b.score - a.score).slice(0, 10);
   localStorage.setItem(
     SCORES_KEY,
     JSON.stringify({ version: SCORES_SCHEMA_VERSION, entries: next })
@@ -142,14 +145,17 @@ export const loadGoalsState = (): GoalsState => {
     const parsed = JSON.parse(raw) as GoalsState;
     if (!Array.isArray(parsed.unlocked)) return defaultGoals;
     const unlockedModes = Array.isArray(parsed.unlockedModes)
-      ? parsed.unlockedModes.filter((mode): mode is PlayMode => PLAY_MODES.includes(mode as PlayMode))
+      ? parsed.unlockedModes.filter((mode): mode is PlayMode =>
+          PLAY_MODES.includes(mode as PlayMode)
+        )
       : defaultGoals.unlockedModes;
     const secretModes = Array.isArray(parsed.secretModes)
       ? parsed.secretModes.filter((mode) => typeof mode === "string")
       : defaultGoals.secretModes;
-    const plays = typeof parsed.plays === "number" && Number.isFinite(parsed.plays)
-      ? parsed.plays
-      : defaultGoals.plays;
+    const plays =
+      typeof parsed.plays === "number" && Number.isFinite(parsed.plays)
+        ? parsed.plays
+        : defaultGoals.plays;
     const normalizedModes = unlockedModes.includes("marathon")
       ? unlockedModes
       : (["marathon", ...unlockedModes] as PlayMode[]);

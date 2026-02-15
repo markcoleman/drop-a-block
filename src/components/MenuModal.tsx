@@ -51,7 +51,8 @@ const HelpPanel = ({ holdEnabled }: { holdEnabled: boolean }) => {
           <strong>Rotate</strong> with Z / X or the on-screen rotate buttons.
         </li>
         <li>
-          <strong>Move/Drop</strong> by holding the on-screen arrows for repeat.
+          <strong>Touch controls</strong> let you drag left/right, swipe down to drop, and tap the
+          board to rotate. You can toggle mobile controls in Settings.
         </li>
         <li>
           <strong>Hard drop</strong> with Space or the hard drop button.

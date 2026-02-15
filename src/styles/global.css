@@ -152,8 +152,7 @@ body {
     radial-gradient(circle at 12% 18%, var(--accent-glow), transparent 55%),
     radial-gradient(circle at 82% 12%, var(--accent-warm-glow), transparent 52%),
     radial-gradient(circle at 80% 85%, rgba(255, 255, 255, 0.04), transparent 60%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.35)),
-    var(--bg);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.35)), var(--bg);
   background-attachment: fixed;
   color: var(--text);
   min-height: 100vh;
@@ -253,7 +252,8 @@ body::after {
   font-weight: 600;
   font-size: var(--text-sm);
   cursor: pointer;
-  transition: transform var(--transition-fast) var(--ease-out),
+  transition:
+    transform var(--transition-fast) var(--ease-out),
     box-shadow var(--transition-fast) var(--ease-out),
     border var(--transition-fast) var(--ease-out),
     background var(--transition-fast) var(--ease-out),
@@ -406,6 +406,19 @@ input:focus-visible {
   border-radius: var(--radius-md);
 }
 
+.hud-reveal-button {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  z-index: 6;
+  background: rgba(8, 12, 22, 0.72);
+  border-color: var(--panel-quiet-border);
+  backdrop-filter: blur(10px);
+}
+
 .game-stage {
   display: grid;
   gap: var(--space-3);
@@ -438,20 +451,23 @@ input:focus-visible {
 .board-panel.arkanoid {
   border-color: color-mix(in srgb, var(--accent) 70%, transparent);
   box-shadow: 0 26px 60px rgba(8, 15, 35, 0.6);
-  background: radial-gradient(circle at 50% 0%, var(--accent-glow), transparent 55%),
+  background:
+    radial-gradient(circle at 50% 0%, var(--accent-glow), transparent 55%),
     radial-gradient(circle at 50% 100%, var(--accent-warm-glow), transparent 55%), #050a16;
 }
 
 .board-panel.doom {
   border-color: color-mix(in srgb, var(--accent-warm) 70%, transparent);
   box-shadow: 0 26px 60px rgba(12, 6, 5, 0.6);
-  background: radial-gradient(circle at 50% 15%, rgba(248, 113, 113, 0.35), transparent 55%),
+  background:
+    radial-gradient(circle at 50% 15%, rgba(248, 113, 113, 0.35), transparent 55%),
     radial-gradient(circle at 50% 100%, rgba(251, 146, 60, 0.35), transparent 60%), #05060d;
   animation: boardPulse 1.6s ease-in-out infinite;
 }
 
 .board-panel.party:not(.arkanoid):not(.doom) {
-  background: radial-gradient(circle at 10% 15%, rgba(56, 189, 248, 0.18), transparent 50%),
+  background:
+    radial-gradient(circle at 10% 15%, rgba(56, 189, 248, 0.18), transparent 50%),
     radial-gradient(circle at 90% 20%, rgba(244, 114, 182, 0.18), transparent 55%),
     radial-gradient(circle at 50% 100%, rgba(125, 211, 252, 0.16), transparent 60%),
     linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(8, 12, 24, 0.55));
@@ -459,7 +475,9 @@ input:focus-visible {
 
 .board-panel.bonus:not(.arkanoid):not(.doom) {
   border-color: color-mix(in srgb, var(--accent) 70%, transparent);
-  box-shadow: var(--shadow-lg), 0 0 36px var(--accent-glow);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 36px var(--accent-glow);
 }
 
 .board-panel.bonus:not(.arkanoid):not(.doom)::after {
@@ -475,7 +493,8 @@ input:focus-visible {
 .board-panel.doom::after {
   opacity: 0.65;
   transform: translateY(0);
-  background: linear-gradient(
+  background:
+    linear-gradient(
       180deg,
       rgba(248, 113, 113, 0.28) 0%,
       rgba(251, 146, 60, 0.18) 45%,
@@ -529,7 +548,8 @@ input:focus-visible {
 
 .board-panel.arkanoid .game-canvas {
   background: var(--board-bg);
-  box-shadow: 0 14px 32px rgba(2, 6, 23, 0.6),
+  box-shadow:
+    0 14px 32px rgba(2, 6, 23, 0.6),
     inset 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
   touch-action: none;
 }
@@ -545,7 +565,8 @@ input:focus-visible {
 }
 
 .board-panel.arkanoid::after {
-  background: linear-gradient(
+  background:
+    linear-gradient(
       180deg,
       color-mix(in srgb, var(--accent) 28%, transparent) 0%,
       color-mix(in srgb, var(--accent-strong) 8%, transparent) 45%,
@@ -570,11 +591,15 @@ input:focus-visible {
 }
 
 .board-panel.clear-lines {
-  box-shadow: var(--shadow-lg), 0 0 36px var(--accent-glow);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 36px var(--accent-glow);
 }
 
 .board-panel.clear-lines-4 {
-  box-shadow: var(--shadow-lg), 0 0 48px var(--accent-glow),
+  box-shadow:
+    var(--shadow-lg),
+    0 0 48px var(--accent-glow),
     0 0 24px var(--accent-warm-glow);
 }
 
@@ -630,7 +655,9 @@ input:focus-visible {
   aspect-ratio: 1 / 2;
   border-radius: var(--radius-lg);
   background: var(--board-bg);
-  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 10px 30px rgba(2, 6, 23, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .board-panel.clear-flash .game-canvas {
@@ -790,7 +817,8 @@ input:focus-visible {
   display: grid;
   gap: 6px;
   cursor: pointer;
-  transition: border var(--transition-fast) var(--ease-out),
+  transition:
+    border var(--transition-fast) var(--ease-out),
     box-shadow var(--transition-fast) var(--ease-out),
     transform var(--transition-fast) var(--ease-out);
 }
@@ -855,7 +883,8 @@ input:focus-visible {
   color: inherit;
   cursor: pointer;
   text-align: left;
-  transition: transform var(--transition-fast) var(--ease-out),
+  transition:
+    transform var(--transition-fast) var(--ease-out),
     box-shadow var(--transition-fast) var(--ease-out),
     border var(--transition-fast) var(--ease-out);
 }
@@ -1257,7 +1286,8 @@ input:focus-visible {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: background var(--transition-fast) var(--ease-out),
+  transition:
+    background var(--transition-fast) var(--ease-out),
     color var(--transition-fast) var(--ease-out),
     transform var(--transition-fast) var(--ease-out);
 }
@@ -1380,7 +1410,8 @@ input[type="radio"] {
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: transform var(--transition-fast) var(--ease-out),
+  transition:
+    transform var(--transition-fast) var(--ease-out),
     box-shadow var(--transition-fast) var(--ease-out),
     border var(--transition-fast) var(--ease-out);
 }
@@ -1445,7 +1476,8 @@ input[type="radio"] {
   display: grid;
   gap: 6px;
   cursor: pointer;
-  transition: border var(--transition-fast) var(--ease-out),
+  transition:
+    border var(--transition-fast) var(--ease-out),
     box-shadow var(--transition-fast) var(--ease-out),
     transform var(--transition-fast) var(--ease-out);
 }
@@ -1505,7 +1537,8 @@ input[type="radio"] {
   padding: 10px 12px;
   cursor: pointer;
   font-weight: 600;
-  transition: transform var(--transition-fast) var(--ease-out),
+  transition:
+    transform var(--transition-fast) var(--ease-out),
     box-shadow var(--transition-fast) var(--ease-out),
     border var(--transition-fast) var(--ease-out);
 }
@@ -1583,13 +1616,13 @@ input[type="radio"] {
     width: 100%;
     justify-content: flex-end;
   }
-  .app.touch-enabled {
+  .app.mobile-controls-enabled {
     padding: 20px 12px calc(170px + env(safe-area-inset-bottom));
   }
   .layout {
     gap: 18px;
   }
-  .app.touch-enabled .layout {
+  .app.mobile-controls-enabled .layout {
     padding-bottom: 160px;
   }
   .game-stage {
@@ -1683,6 +1716,69 @@ input[type="radio"] {
   }
   .control-text {
     display: none;
+  }
+  .hud-reveal-button {
+    top: 10px;
+    right: 10px;
+  }
+  .app.mobile-focus {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+    min-height: 100dvh;
+  }
+  .app.mobile-focus .layout {
+    width: 100%;
+    min-height: 100dvh;
+    gap: 0;
+    padding: 0;
+  }
+  .app.mobile-focus .game-panel {
+    width: 100%;
+    min-height: 100dvh;
+    gap: 0;
+  }
+  .app.mobile-focus .game-stage {
+    width: 100%;
+    min-height: 100dvh;
+    grid-template-areas: "board";
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .app.mobile-focus .board-panel {
+    width: 100%;
+    max-width: none;
+    min-height: 100dvh;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    background: var(--board-bg);
+  }
+  .app.mobile-focus .board-panel::before,
+  .app.mobile-focus .board-panel::after {
+    display: none;
+  }
+  .app.mobile-focus .game-canvas {
+    width: min(100vw, 50dvh);
+    max-width: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .app.mobile-focus .overlay {
+    border-radius: 0;
+  }
+  .app.mobile-focus .controls {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+    background: linear-gradient(
+      180deg,
+      rgba(5, 8, 18, 0) 0%,
+      rgba(5, 8, 18, 0.5) 45%,
+      rgba(5, 8, 18, 0.88) 100%
+    );
   }
 }
 

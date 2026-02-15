@@ -52,6 +52,14 @@ export const SettingsPanel = ({ settings, onChange, className }: Props) => {
           />
           <span>Reduced motion</span>
         </label>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={settings.showHud}
+            onChange={(event) => onChange({ ...settings, showHud: event.target.checked })}
+          />
+          <span>Show HUD</span>
+        </label>
       </div>
       <div className="settings-group">
         <p className="settings-label">Audio & Gameplay</p>
@@ -70,6 +78,14 @@ export const SettingsPanel = ({ settings, onChange, className }: Props) => {
             onChange={(event) => onChange({ ...settings, holdEnabled: event.target.checked })}
           />
           <span>Enable hold</span>
+        </label>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={settings.mobileControls}
+            onChange={(event) => onChange({ ...settings, mobileControls: event.target.checked })}
+          />
+          <span>Mobile controls</span>
         </label>
       </div>
       <div className="settings-group">

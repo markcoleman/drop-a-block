@@ -7,6 +7,8 @@ import { Controls } from "./components/Controls";
 import { type DropTrail, GameCanvas } from "./components/GameCanvas";
 import { GameOverOverlay } from "./components/GameOverOverlay";
 import { HudBar } from "./components/HudBar";
+import { IconButton } from "./components/IconButton";
+import { EyeIcon } from "./components/Icons";
 import { MenuModal } from "./components/MenuModal";
 import { PauseOverlay } from "./components/PauseOverlay";
 import { QueuePanel } from "./components/QueuePanel";
@@ -21,7 +23,8 @@ import {
   resetGame,
   setPaddlePosition,
   startGame,
-  turnDoom
+  turnDoom,
+  VISIBLE_ROWS
 } from "./engine/engine";
 import type { GameModifiers, PlayMode } from "./engine/types";
 import { ACTION_EFFECTS } from "./game/actionEffects";
@@ -70,6 +73,7 @@ export const App = () => {
   const [comboCount, setComboCount] = useState(0);
   const [comboPulse, setComboPulse] = useState(0);
   const [isTouchMode, setIsTouchMode] = useState(false);
+  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
   const [startStep, setStartStep] = useState<StartStep>("main");
   const [selectedMode, setSelectedMode] = useState<PlayMode>("marathon");
   const [showCheatEntry, setShowCheatEntry] = useState(false);
@@ -93,6 +97,17 @@ export const App = () => {
   const lastClearRef = useRef(state.lastClear);
   const cheatTapRef = useRef<{ count: number; timeoutId?: number }>({ count: 0 });
   const cheatBufferRef = useRef("");
+  const touchGestureRef = useRef<{
+    pointerId: number | null;
+    startX: number;
+    startY: number;
+    lastX: number;
+    lastY: number;
+    startedAt: number;
+    cellWidth: number;
+    cellHeight: number;
+    hardDropTriggered: boolean;
+  } | null>(null);
   const updateGoalsState = useCallback(
     (updater: (prev: typeof goalsState) => typeof goalsState) => {
       setGoalsState((prev) => {
@@ -161,6 +176,26 @@ export const App = () => {
         coarseQuery.removeEventListener("change", updateTouchMode);
       } else {
         coarseQuery.removeListener(updateTouchMode);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const narrowQuery = window.matchMedia("(max-width: 720px)");
+    const updateViewportMode = () => setIsNarrowViewport(narrowQuery.matches);
+    updateViewportMode();
+
+    if (narrowQuery.addEventListener) {
+      narrowQuery.addEventListener("change", updateViewportMode);
+    } else {
+      narrowQuery.addListener(updateViewportMode);
+    }
+
+    return () => {
+      if (narrowQuery.removeEventListener) {
+        narrowQuery.removeEventListener("change", updateViewportMode);
+      } else {
+        narrowQuery.removeListener(updateViewportMode);
       }
     };
   }, []);
@@ -305,6 +340,12 @@ export const App = () => {
     if (state.mode === "doom") stopAll();
   }, [state.mode, stopAll]);
 
+  useEffect(() => {
+    if (state.mode !== "tetris" || state.status !== "running") {
+      touchGestureRef.current = null;
+    }
+  }, [state.mode, state.status]);
+
   const nextQueue = useMemo(() => state.queue.slice(0, 3), [state.queue]);
   const comboActive = comboCount >= 2 && performance.now() - comboPulse < 900;
   const goalProgress = useMemo(
@@ -361,6 +402,92 @@ export const App = () => {
       applyState((prev) => setPaddlePosition(prev, x));
     },
     [applyState, stateRef]
+  );
+
+  const handleTetrisPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLCanvasElement>) => {
+      const current = stateRef.current;
+      if (current.mode !== "tetris" || current.status !== "running") return;
+      if (event.pointerType === "mouse") return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      touchGestureRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        lastX: event.clientX,
+        lastY: event.clientY,
+        startedAt: performance.now(),
+        cellWidth: rect.width / BOARD_WIDTH,
+        cellHeight: rect.height / VISIBLE_ROWS,
+        hardDropTriggered: false
+      };
+    },
+    [stateRef]
+  );
+
+  const handleTetrisPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLCanvasElement>) => {
+      const gesture = touchGestureRef.current;
+      if (!gesture || gesture.pointerId !== event.pointerId) return;
+      const current = stateRef.current;
+      if (current.mode !== "tetris" || current.status !== "running") {
+        touchGestureRef.current = null;
+        return;
+      }
+
+      const moveThreshold = Math.max(8, gesture.cellWidth * 0.55);
+      let deltaX = event.clientX - gesture.lastX;
+
+      while (deltaX >= moveThreshold) {
+        handleAction("right");
+        gesture.lastX += moveThreshold;
+        deltaX = event.clientX - gesture.lastX;
+      }
+
+      while (deltaX <= -moveThreshold) {
+        handleAction("left");
+        gesture.lastX -= moveThreshold;
+        deltaX = event.clientX - gesture.lastX;
+      }
+
+      const softDropThreshold = Math.max(12, gesture.cellHeight * 0.65);
+      let deltaY = event.clientY - gesture.lastY;
+      while (deltaY >= softDropThreshold) {
+        handleAction("down");
+        gesture.lastY += softDropThreshold;
+        deltaY = event.clientY - gesture.lastY;
+      }
+
+      const totalDropDistance = event.clientY - gesture.startY;
+      const hardDropThreshold = Math.max(96, gesture.cellHeight * 3.8);
+      if (!gesture.hardDropTriggered && totalDropDistance >= hardDropThreshold) {
+        gesture.hardDropTriggered = true;
+        handleAction("hardDrop");
+      }
+    },
+    [handleAction, stateRef]
+  );
+
+  const handleTetrisPointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLCanvasElement>) => {
+      const gesture = touchGestureRef.current;
+      if (!gesture || gesture.pointerId !== event.pointerId) return;
+      touchGestureRef.current = null;
+
+      if (gesture.hardDropTriggered) return;
+      const current = stateRef.current;
+      if (current.mode !== "tetris" || current.status !== "running") return;
+
+      const tapMaxDuration = 260;
+      const tapSlop = Math.max(10, gesture.cellWidth * 0.35);
+      const elapsed = performance.now() - gesture.startedAt;
+      const movedX = Math.abs(event.clientX - gesture.startX);
+      const movedY = Math.abs(event.clientY - gesture.startY);
+      if (elapsed <= tapMaxDuration && movedX <= tapSlop && movedY <= tapSlop) {
+        handleAction("rotateCw");
+      }
+    },
+    [handleAction, stateRef]
   );
 
   const handleDoomPointerDown = useCallback(
@@ -529,6 +656,9 @@ export const App = () => {
 
   const arkanoidTouchEnabled =
     isTouchMode && state.mode === "arkanoid" && state.status === "running";
+  const tetrisTouchEnabled =
+    isTouchMode && state.mode === "tetris" && state.status === "running" && inputEnabled;
+  const mobileControlsEnabled = isTouchMode && settings.mobileControls;
   const doomPointerEnabled = state.mode === "doom" && state.status === "running";
   const modeTimeLeft = Math.max(0, state.modeTimer);
   const modeMinutes = Math.floor(modeTimeLeft / 60000);
@@ -537,6 +667,8 @@ export const App = () => {
     .padStart(2, "0");
   const sprintLinesLeft = Math.max(0, state.targetLines - state.lines);
   const modeLabel = MODE_LABELS[state.playMode];
+  const mobileFocusMode = isTouchMode && isNarrowViewport;
+  const showHud = settings.showHud && !mobileFocusMode;
   const activeMenu = !showScoreEntry && menuView !== "none" ? menuView : null;
 
   const handleScoreSubmit = () => {
@@ -553,25 +685,34 @@ export const App = () => {
   };
 
   return (
-    <div className={clsx("app", { "touch-enabled": isTouchMode })}>
+    <div
+      className={clsx("app", {
+        "touch-enabled": isTouchMode,
+        "mobile-focus": mobileFocusMode,
+        "mobile-controls-enabled": mobileControlsEnabled
+      })}
+    >
       <main className="layout">
         <section className="game-panel">
-          <HudBar
-            status={state.status}
-            mode={state.mode}
-            playMode={state.playMode}
-            modeLabel={modeLabel}
-            sprintLinesLeft={sprintLinesLeft}
-            modeMinutes={modeMinutes}
-            modeSeconds={modeSeconds}
-            score={state.score}
-            level={state.level}
-            lines={state.lines}
-            doomLinesToReady={doomLinesToReady}
-            highScore={highScore}
-            onPause={() => handleAction("pause")}
-            onOpenSettings={() => setMenuView("settings")}
-          />
+          {showHud && (
+            <HudBar
+              status={state.status}
+              mode={state.mode}
+              playMode={state.playMode}
+              modeLabel={modeLabel}
+              sprintLinesLeft={sprintLinesLeft}
+              modeMinutes={modeMinutes}
+              modeSeconds={modeSeconds}
+              score={state.score}
+              level={state.level}
+              lines={state.lines}
+              doomLinesToReady={doomLinesToReady}
+              highScore={highScore}
+              onPause={() => handleAction("pause")}
+              onOpenSettings={() => setMenuView("settings")}
+              onHideHud={() => setSettings((prev) => ({ ...prev, showHud: false }))}
+            />
+          )}
           <div className="game-stage">
             <div
               className={clsx("board-panel", {
@@ -596,10 +737,28 @@ export const App = () => {
                     ? handleDoomPointerDown
                     : arkanoidTouchEnabled
                       ? handleArkanoidPointer
+                      : tetrisTouchEnabled
+                        ? handleTetrisPointerDown
+                        : undefined
+                }
+                onPointerMove={
+                  arkanoidTouchEnabled
+                    ? handleArkanoidPointer
+                    : tetrisTouchEnabled
+                      ? handleTetrisPointerMove
                       : undefined
                 }
-                onPointerMove={arkanoidTouchEnabled ? handleArkanoidPointer : undefined}
+                onPointerUp={tetrisTouchEnabled ? handleTetrisPointerUp : undefined}
               />
+              {!showHud && !mobileFocusMode && (
+                <IconButton
+                  className="hud-reveal-button"
+                  label="Show HUD"
+                  onClick={() => setSettings((prev) => ({ ...prev, showHud: true }))}
+                >
+                  <EyeIcon />
+                </IconButton>
+              )}
               {comboActive && state.status === "running" && (
                 <div className="combo-badge" aria-live="polite">
                   Combo x{comboCount}
@@ -647,30 +806,34 @@ export const App = () => {
                 />
               )}
             </div>
-            <div className="side-panel left">
-              <StatsPanel
-                level={state.level}
-                mode={state.mode}
-                arkanoidSeconds={arkanoidSeconds}
-                doomSeconds={doomSeconds}
-                status={state.status}
-                linesToNextLevel={linesToNextLevel}
-                levelProgress={levelProgress}
-                linesIntoLevel={linesIntoLevel}
-                nextLevelTarget={nextLevelTarget}
-                displayGoals={displayGoals}
-              />
-            </div>
-            <div className="side-panel right">
-              <QueuePanel
-                holdEnabled={settings.holdEnabled}
-                holdPiece={state.hold}
-                nextQueue={nextQueue}
-                palette={palette}
-              />
-            </div>
+            {showHud && (
+              <>
+                <div className="side-panel left">
+                  <StatsPanel
+                    level={state.level}
+                    mode={state.mode}
+                    arkanoidSeconds={arkanoidSeconds}
+                    doomSeconds={doomSeconds}
+                    status={state.status}
+                    linesToNextLevel={linesToNextLevel}
+                    levelProgress={levelProgress}
+                    linesIntoLevel={linesIntoLevel}
+                    nextLevelTarget={nextLevelTarget}
+                    displayGoals={displayGoals}
+                  />
+                </div>
+                <div className="side-panel right">
+                  <QueuePanel
+                    holdEnabled={settings.holdEnabled}
+                    holdPiece={state.hold}
+                    nextQueue={nextQueue}
+                    palette={palette}
+                  />
+                </div>
+              </>
+            )}
           </div>
-          {isTouchMode && state.mode !== "doom" && (
+          {mobileControlsEnabled && state.mode !== "doom" && (
             <Controls
               onLeftStart={() => startRepeat("left")}
               onLeftEnd={() => stopRepeat("left")}
