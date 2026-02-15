@@ -15,6 +15,8 @@
     "test:watch": "vitest --watch",
     "test:ci": "vitest run --coverage",
     "test:coverage": "vitest --coverage",
+    "docs:check": "node scripts/docs-check.mjs",
+    "docs:refresh": "node scripts/docs-refresh.mjs",
     "prepare": "husky"
   },
   "dependencies": {
