@@ -114,12 +114,13 @@ export const App = () => {
     pointerId: number | null;
     startX: number;
     startY: number;
-    lastX: number;
+    movedColumns: number;
     startedAt: number;
     cellWidth: number;
     cellHeight: number;
+    boardLeft: number;
+    boardWidth: number;
     downRepeatActive: boolean;
-    axis: "none" | "horizontal" | "vertical";
   } | null>(null);
   const updateGoalsState = useCallback(
     (updater: (prev: typeof goalsState) => typeof goalsState) => {
@@ -591,12 +592,13 @@ export const App = () => {
         pointerId: event.pointerId,
         startX: event.clientX,
         startY: event.clientY,
-        lastX: event.clientX,
+        movedColumns: 0,
         startedAt: performance.now(),
         cellWidth: rect.width / BOARD_WIDTH,
         cellHeight: rect.height / VISIBLE_ROWS,
-        downRepeatActive: false,
-        axis: "none"
+        boardLeft: rect.left,
+        boardWidth: rect.width,
+        downRepeatActive: false
       };
     },
     [stateRef]
@@ -617,50 +619,35 @@ export const App = () => {
 
       const totalX = event.clientX - gesture.startX;
       const totalY = event.clientY - gesture.startY;
-      const lockThresholdX = Math.max(10, gesture.cellWidth * 0.35);
-      const lockThresholdY = Math.max(12, gesture.cellHeight * 0.5);
+      const moveThreshold = Math.max(5, gesture.cellWidth * 0.32);
+      const targetColumns =
+        totalX >= 0 ? Math.floor(totalX / moveThreshold) : Math.ceil(totalX / moveThreshold);
 
-      if (
-        gesture.axis === "none" &&
-        (Math.abs(totalX) >= lockThresholdX || Math.abs(totalY) >= lockThresholdY)
-      ) {
-        gesture.axis = Math.abs(totalX) >= Math.abs(totalY) * 0.95 ? "horizontal" : "vertical";
+      while (gesture.movedColumns < targetColumns) {
+        handleAction("right");
+        gesture.movedColumns += 1;
       }
 
-      if (gesture.axis !== "vertical") {
-        const moveThreshold = Math.max(7, gesture.cellWidth * 0.42);
-        let deltaX = event.clientX - gesture.lastX;
-
-        while (deltaX >= moveThreshold) {
-          handleAction("right");
-          gesture.lastX += moveThreshold;
-          deltaX = event.clientX - gesture.lastX;
-        }
-
-        while (deltaX <= -moveThreshold) {
-          handleAction("left");
-          gesture.lastX -= moveThreshold;
-          deltaX = event.clientX - gesture.lastX;
-        }
+      while (gesture.movedColumns > targetColumns) {
+        handleAction("left");
+        gesture.movedColumns -= 1;
       }
 
-      if (gesture.axis !== "horizontal") {
-        const dragDownThreshold = Math.max(16, gesture.cellHeight * 0.9);
-        const dragUpThreshold = Math.max(10, gesture.cellHeight * 0.55);
-        const totalDropDistance = event.clientY - gesture.startY;
+      const dragDownThreshold = Math.max(10, gesture.cellHeight * 0.5);
+      const dragReleaseThreshold = Math.max(4, gesture.cellHeight * 0.2);
 
-        if (totalDropDistance >= dragDownThreshold && !gesture.downRepeatActive) {
-          gesture.downRepeatActive = true;
-          startRepeat("down");
-        }
+      if (totalY >= dragDownThreshold && !gesture.downRepeatActive) {
+        gesture.downRepeatActive = true;
+        handleAction("down");
+        startRepeat("down");
+      }
 
-        if (totalDropDistance <= dragUpThreshold && gesture.downRepeatActive) {
-          gesture.downRepeatActive = false;
-          stopRepeat("down");
-        }
+      if (totalY <= dragReleaseThreshold && gesture.downRepeatActive) {
+        gesture.downRepeatActive = false;
+        stopRepeat("down");
       }
     },
-    [startRepeat, stateRef, stopRepeat]
+    [handleAction, startRepeat, stateRef, stopRepeat]
   );
 
   const handleTetrisPointerUp = useCallback(
@@ -680,6 +667,15 @@ export const App = () => {
       const movedX = Math.abs(event.clientX - gesture.startX);
       const movedY = Math.abs(event.clientY - gesture.startY);
       if (elapsed <= tapMaxDuration && movedX <= tapSlop && movedY <= tapSlop) {
+        const relativeX = (event.clientX - gesture.boardLeft) / gesture.boardWidth;
+        if (relativeX <= 0.3) {
+          handleAction("left");
+          return;
+        }
+        if (relativeX >= 0.7) {
+          handleAction("right");
+          return;
+        }
         handleAction("rotateCw");
       }
     },

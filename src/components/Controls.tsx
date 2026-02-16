@@ -47,6 +47,9 @@ const ControlButton = ({
 
   const handlePointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (!isHoldable) return;
+    if (event.type === "pointerleave" && event.currentTarget.hasPointerCapture(event.pointerId)) {
+      return;
+    }
     onHoldEnd?.();
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
