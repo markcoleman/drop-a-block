@@ -30,6 +30,24 @@ export const SettingsIcon = ({ className }: IconProps) => (
   </svg>
 );
 
+export const DownloadIcon = ({ className }: IconProps) => (
+  <svg {...iconBase(className)}>
+    <path d="M12 4v10" />
+    <path d="M8 10l4 4 4-4" />
+    <path d="M5 20h14" />
+  </svg>
+);
+
+export const ShareIcon = ({ className }: IconProps) => (
+  <svg {...iconBase(className)}>
+    <circle cx="18" cy="5" r="2" />
+    <circle cx="6" cy="12" r="2" />
+    <circle cx="18" cy="19" r="2" />
+    <path d="M8 11l8-5" />
+    <path d="M8 13l8 5" />
+  </svg>
+);
+
 export const HelpIcon = ({ className }: IconProps) => (
   <svg {...iconBase(className)}>
     <circle cx="12" cy="12" r="9" />

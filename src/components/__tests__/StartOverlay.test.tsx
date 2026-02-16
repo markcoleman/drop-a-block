@@ -29,6 +29,10 @@ it("calls onStartMenu from main screen", async () => {
       onOpenSettings={() => {}}
       onOpenHelp={() => {}}
       onOpenAbout={() => {}}
+      canInstall={false}
+      onInstallApp={() => {}}
+      canShare={false}
+      onShareApp={() => {}}
     />
   );
 
@@ -57,6 +61,10 @@ const createProps = (overrides: Partial<ComponentProps<typeof StartOverlay>> = {
   onOpenSettings: () => {},
   onOpenHelp: () => {},
   onOpenAbout: () => {},
+  canInstall: false,
+  onInstallApp: () => {},
+  canShare: false,
+  onShareApp: () => {},
   ...overrides
 });
 
@@ -115,4 +123,27 @@ it("handles cheat entry interactions", () => {
   fireEvent.keyDown(input, { key: "Enter" });
   expect(onCheatSubmit).toHaveBeenCalledTimes(1);
   expect(screen.getByText(/Nope\. Try again\./i)).toBeInTheDocument();
+});
+
+it("renders install/share actions when available", async () => {
+  const onInstallApp = vi.fn();
+  const onShareApp = vi.fn();
+
+  render(
+    <StartOverlay
+      {...createProps({
+        canInstall: true,
+        canShare: true,
+        onInstallApp,
+        onShareApp
+      })}
+    />
+  );
+
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: /install app/i }));
+  await user.click(screen.getByRole("button", { name: /share game/i }));
+
+  expect(onInstallApp).toHaveBeenCalledTimes(1);
+  expect(onShareApp).toHaveBeenCalledTimes(1);
 });

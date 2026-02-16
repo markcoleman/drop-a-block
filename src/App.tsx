@@ -81,6 +81,9 @@ export const App = () => {
   const [showCheatEntry, setShowCheatEntry] = useState(false);
   const [cheatInput, setCheatInput] = useState("");
   const [cheatFeedback, setCheatFeedback] = useState<CheatFeedback>("idle");
+  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(
+    null
+  );
   const arkanoidSeconds = Math.ceil(state.arkanoid.timeLeft / 1000);
   const doomSeconds = Math.ceil(state.doom.timeLeft / 1000);
   const bonusSeconds = Math.ceil(state.bonusTimeLeft / 1000);
@@ -106,6 +109,7 @@ export const App = () => {
   const lastClearRef = useRef(state.lastClear);
   const cheatTapRef = useRef<{ count: number; timeoutId?: number }>({ count: 0 });
   const cheatBufferRef = useRef("");
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const touchGestureRef = useRef<{
     pointerId: number | null;
     startX: number;
@@ -211,6 +215,73 @@ export const App = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPromptEvent(event as BeforeInstallPromptEvent);
+    };
+
+    const handleAppInstalled = () => {
+      setInstallPromptEvent(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!("wakeLock" in navigator)) return;
+    let canceled = false;
+
+    const releaseWakeLock = async () => {
+      try {
+        await wakeLockRef.current?.release();
+      } catch {
+        // Ignore wake lock release errors.
+      }
+      wakeLockRef.current = null;
+    };
+
+    const requestWakeLock = async () => {
+      if (canceled || state.status !== "running" || document.visibilityState !== "visible") {
+        return;
+      }
+      try {
+        wakeLockRef.current = await navigator.wakeLock.request("screen");
+        wakeLockRef.current.addEventListener("release", () => {
+          wakeLockRef.current = null;
+        });
+      } catch {
+        wakeLockRef.current = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void requestWakeLock();
+        return;
+      }
+      void releaseWakeLock();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    if (state.status === "running") {
+      void requestWakeLock();
+    } else {
+      void releaseWakeLock();
+    }
+
+    return () => {
+      canceled = true;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      void releaseWakeLock();
+    };
+  }, [state.status]);
 
   useEffect(() => {
     if (state.status === "over") {
@@ -389,6 +460,34 @@ export const App = () => {
     const nextGoals = upcoming.slice(0, 3);
     return [...recentUnlocked, ...nextGoals].slice(0, 4);
   }, [goalProgress]);
+
+  const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+  const canInstall = Boolean(installPromptEvent);
+
+  const handleInstallApp = useCallback(async () => {
+    if (!installPromptEvent) return;
+    await installPromptEvent.prompt();
+    await installPromptEvent.userChoice;
+    setInstallPromptEvent(null);
+  }, [installPromptEvent]);
+
+  const handleShareApp = useCallback(async () => {
+    if (!canShare) return;
+    try {
+      await navigator.share({
+        title: translate("start.shareGame", undefined, settings.language, "Share Drop-a-Block"),
+        text: translate(
+          "start.shareGameDesc",
+          undefined,
+          settings.language,
+          "Send this game to a friend in one tap."
+        ),
+        url: window.location.href
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+    }
+  }, [canShare, settings.language]);
 
   const handleStartMenu = () => {
     setSelectedMode("marathon");
@@ -847,6 +946,10 @@ export const App = () => {
                   onOpenSettings={() => setMenuView("settings")}
                   onOpenHelp={() => setMenuView("help")}
                   onOpenAbout={() => setMenuView("about")}
+                  canInstall={canInstall}
+                  onInstallApp={handleInstallApp}
+                  canShare={canShare}
+                  onShareApp={handleShareApp}
                 />
               )}
               {state.status === "paused" && <PauseOverlay onResume={() => handleAction("pause")} />}
