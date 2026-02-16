@@ -53,6 +53,7 @@ export const useInput = ({
 
   const stopRepeat = useCallback(
     (direction: RepeatableAction) => {
+      heldDirections.current[direction] = false;
       clearTimer(direction);
       clearTimer(`${direction}Interval` as TimerKey);
     },
@@ -87,6 +88,7 @@ export const useInput = ({
     (direction: RepeatableAction) => {
       if (!enabled) return;
       if (stateRef.current.status !== "running") return;
+      heldDirections.current[direction] = true;
       if (direction === "left" && isRepeating("right")) stopRepeat("right");
       if (direction === "right" && isRepeating("left")) stopRepeat("left");
       if (isRepeating(direction)) return;
