@@ -115,11 +115,10 @@ export const App = () => {
     startX: number;
     startY: number;
     lastX: number;
-    lastY: number;
     startedAt: number;
     cellWidth: number;
     cellHeight: number;
-    hardDropTriggered: boolean;
+    downRepeatActive: boolean;
     axis: "none" | "horizontal" | "vertical";
   } | null>(null);
   const updateGoalsState = useCallback(
@@ -486,9 +485,12 @@ export const App = () => {
 
   useEffect(() => {
     if (state.mode !== "tetris" || state.status !== "running") {
+      if (touchGestureRef.current?.downRepeatActive) {
+        stopRepeat("down");
+      }
       touchGestureRef.current = null;
     }
-  }, [state.mode, state.status]);
+  }, [state.mode, state.status, stopRepeat]);
 
   const nextQueue = useMemo(() => state.queue.slice(0, 3), [state.queue]);
   const comboActive = comboCount >= 2 && performance.now() - comboPulse < 900;
@@ -590,11 +592,10 @@ export const App = () => {
         startX: event.clientX,
         startY: event.clientY,
         lastX: event.clientX,
-        lastY: event.clientY,
         startedAt: performance.now(),
         cellWidth: rect.width / BOARD_WIDTH,
         cellHeight: rect.height / VISIBLE_ROWS,
-        hardDropTriggered: false,
+        downRepeatActive: false,
         axis: "none"
       };
     },
@@ -607,6 +608,9 @@ export const App = () => {
       if (!gesture || gesture.pointerId !== event.pointerId) return;
       const current = stateRef.current;
       if (current.mode !== "tetris" || current.status !== "running") {
+        if (gesture.downRepeatActive) {
+          stopRepeat("down");
+        }
         touchGestureRef.current = null;
         return;
       }
@@ -641,23 +645,22 @@ export const App = () => {
       }
 
       if (gesture.axis !== "horizontal") {
-        const softDropThreshold = Math.max(14, gesture.cellHeight * 0.75);
-        let deltaY = event.clientY - gesture.lastY;
-        while (deltaY >= softDropThreshold) {
-          handleAction("down");
-          gesture.lastY += softDropThreshold;
-          deltaY = event.clientY - gesture.lastY;
+        const dragDownThreshold = Math.max(16, gesture.cellHeight * 0.9);
+        const dragUpThreshold = Math.max(10, gesture.cellHeight * 0.55);
+        const totalDropDistance = event.clientY - gesture.startY;
+
+        if (totalDropDistance >= dragDownThreshold && !gesture.downRepeatActive) {
+          gesture.downRepeatActive = true;
+          startRepeat("down");
         }
 
-        const totalDropDistance = event.clientY - gesture.startY;
-        const hardDropThreshold = Math.max(110, gesture.cellHeight * 4.5);
-        if (!gesture.hardDropTriggered && totalDropDistance >= hardDropThreshold) {
-          gesture.hardDropTriggered = true;
-          handleAction("hardDrop");
+        if (totalDropDistance <= dragUpThreshold && gesture.downRepeatActive) {
+          gesture.downRepeatActive = false;
+          stopRepeat("down");
         }
       }
     },
-    [handleAction, stateRef]
+    [startRepeat, stateRef, stopRepeat]
   );
 
   const handleTetrisPointerUp = useCallback(
@@ -665,8 +668,9 @@ export const App = () => {
       const gesture = touchGestureRef.current;
       if (!gesture || gesture.pointerId !== event.pointerId) return;
       touchGestureRef.current = null;
-
-      if (gesture.hardDropTriggered) return;
+      if (gesture.downRepeatActive) {
+        stopRepeat("down");
+      }
       const current = stateRef.current;
       if (current.mode !== "tetris" || current.status !== "running") return;
 
@@ -679,7 +683,7 @@ export const App = () => {
         handleAction("rotateCw");
       }
     },
-    [handleAction, stateRef]
+    [handleAction, stateRef, stopRepeat]
   );
 
   const handleDoomPointerDown = useCallback(
