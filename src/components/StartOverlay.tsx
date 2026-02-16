@@ -6,7 +6,15 @@ import type { PlayMode } from "../engine/types";
 import { MODE_LABELS, MODE_OPTIONS, MODE_UNLOCKS } from "../game/modes";
 import { useI18n } from "../i18n";
 import type { CheatFeedback, StartStep } from "../ui/types";
-import { ArrowLeftIcon, HelpIcon, PlayIcon, SettingsIcon, TrophyIcon } from "./Icons";
+import {
+  ArrowLeftIcon,
+  DownloadIcon,
+  HelpIcon,
+  PlayIcon,
+  SettingsIcon,
+  ShareIcon,
+  TrophyIcon
+} from "./Icons";
 
 type StartOverlayProps = {
   startStep: StartStep;
@@ -28,6 +36,10 @@ type StartOverlayProps = {
   onOpenSettings: () => void;
   onOpenHelp: () => void;
   onOpenAbout: () => void;
+  canInstall: boolean;
+  onInstallApp: () => void;
+  canShare: boolean;
+  onShareApp: () => void;
 };
 
 const StartMenuButton = ({
@@ -80,7 +92,11 @@ export const StartOverlay = ({
   onOpenScores,
   onOpenSettings,
   onOpenHelp,
-  onOpenAbout
+  onOpenAbout,
+  canInstall,
+  onInstallApp,
+  canShare,
+  onShareApp
 }: StartOverlayProps) => {
   const { t } = useI18n();
 
@@ -200,6 +216,22 @@ export const StartOverlay = ({
               title={t("start.about")}
               desc={t("start.boardRules")}
             />
+            {canInstall && (
+              <StartMenuButton
+                onClick={onInstallApp}
+                icon={<DownloadIcon />}
+                title={t("start.installApp")}
+                desc={t("start.installAppDesc")}
+              />
+            )}
+            {canShare && (
+              <StartMenuButton
+                onClick={onShareApp}
+                icon={<ShareIcon />}
+                title={t("start.shareGame")}
+                desc={t("start.shareGameDesc")}
+              />
+            )}
           </div>
         )}
         {showCheatEntry && (
