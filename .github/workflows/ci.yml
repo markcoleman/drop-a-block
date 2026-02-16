@@ -5,18 +5,38 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  quality-and-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node + dependencies
+        uses: ./.github/actions/setup-node-deps
+
+      - name: Restore eslint cache
+        uses: actions/cache@v4
         with:
-          node-version: 20
-          cache: "npm"
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test:ci
-      - run: npm run docs:check
-      - run: npm run build
+          path: .eslintcache
+          key: eslint-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '.eslintrc*', 'eslint.config.*') }}
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Validate docs references
+        run: npm run docs:check
+
+      - name: Build
+        run: npm run build
