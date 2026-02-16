@@ -23,8 +23,7 @@ import {
   resetGame,
   setPaddlePosition,
   startGame,
-  turnDoom,
-  VISIBLE_ROWS
+  turnDoom
 } from "./engine/engine";
 import type { GameModifiers, PlayMode } from "./engine/types";
 import { ACTION_EFFECTS } from "./game/actionEffects";
@@ -114,11 +113,16 @@ export const App = () => {
     pointerId: number | null;
     startX: number;
     startY: number;
-    movedColumns: number;
-    movedRows: number;
+    lastX: number;
+    lastY: number;
     startedAt: number;
     cellWidth: number;
-    cellHeight: number;
+    boardLeft: number;
+    boardTop: number;
+    boardWidth: number;
+    boardHeight: number;
+    holdTimerId: number | null;
+    repeatAction: "left" | "right" | "down" | null;
   } | null>(null);
   const updateGoalsState = useCallback(
     (updater: (prev: typeof goalsState) => typeof goalsState) => {
@@ -484,9 +488,26 @@ export const App = () => {
 
   useEffect(() => {
     if (state.mode !== "tetris" || state.status !== "running") {
+      const gesture = touchGestureRef.current;
+      if (gesture?.holdTimerId) {
+        window.clearTimeout(gesture.holdTimerId);
+      }
+      if (gesture?.repeatAction) {
+        stopRepeat(gesture.repeatAction);
+      }
       touchGestureRef.current = null;
     }
-  }, [state.mode, state.status]);
+  }, [state.mode, state.status, stopRepeat]);
+
+  const resolveBoardHoldAction = useCallback(
+    (gesture: NonNullable<typeof touchGestureRef.current>, x: number, y: number) => {
+      const normalizedX = (x - gesture.boardLeft) / gesture.boardWidth;
+      const normalizedY = (y - gesture.boardTop) / gesture.boardHeight;
+      if (normalizedY >= 0.66) return "down" as const;
+      return normalizedX < 0.5 ? ("left" as const) : ("right" as const);
+    },
+    []
+  );
 
   const nextQueue = useMemo(() => state.queue.slice(0, 3), [state.queue]);
   const comboActive = comboCount >= 2 && performance.now() - comboPulse < 900;
@@ -587,14 +608,32 @@ export const App = () => {
         pointerId: event.pointerId,
         startX: event.clientX,
         startY: event.clientY,
-        movedColumns: 0,
-        movedRows: 0,
+        lastX: event.clientX,
+        lastY: event.clientY,
         startedAt: performance.now(),
         cellWidth: rect.width / BOARD_WIDTH,
-        cellHeight: rect.height / VISIBLE_ROWS
+        boardLeft: rect.left,
+        boardTop: rect.top,
+        boardWidth: rect.width,
+        boardHeight: rect.height,
+        holdTimerId: null,
+        repeatAction: null
       };
+
+      const holdDelayMs = 140;
+      touchGestureRef.current.holdTimerId = window.setTimeout(() => {
+        const activeGesture = touchGestureRef.current;
+        if (!activeGesture || activeGesture.pointerId !== event.pointerId) return;
+        const action = resolveBoardHoldAction(
+          activeGesture,
+          activeGesture.lastX,
+          activeGesture.lastY
+        );
+        activeGesture.repeatAction = action;
+        startRepeat(action);
+      }, holdDelayMs);
     },
-    [stateRef]
+    [resolveBoardHoldAction, startRepeat, stateRef]
   );
 
   const handleTetrisPointerMove = useCallback(
@@ -607,36 +646,30 @@ export const App = () => {
         return;
       }
 
-      const totalX = event.clientX - gesture.startX;
-      const totalY = event.clientY - gesture.startY;
-      const moveThreshold = Math.max(5, gesture.cellWidth * 0.32);
-      const targetColumns =
-        totalX >= 0 ? Math.floor(totalX / moveThreshold) : Math.ceil(totalX / moveThreshold);
+      gesture.lastX = event.clientX;
+      gesture.lastY = event.clientY;
 
-      while (gesture.movedColumns < targetColumns) {
-        handleAction("right");
-        gesture.movedColumns += 1;
-      }
-
-      while (gesture.movedColumns > targetColumns) {
-        handleAction("left");
-        gesture.movedColumns -= 1;
-      }
-
-      const rowDragThreshold = Math.max(8, gesture.cellHeight * 0.5);
-      const targetRows = Math.max(0, Math.floor(totalY / rowDragThreshold));
-      while (gesture.movedRows < targetRows) {
-        handleAction("down");
-        gesture.movedRows += 1;
+      if (!gesture.repeatAction) return;
+      const nextAction = resolveBoardHoldAction(gesture, event.clientX, event.clientY);
+      if (nextAction !== gesture.repeatAction) {
+        stopRepeat(gesture.repeatAction);
+        gesture.repeatAction = nextAction;
+        startRepeat(nextAction);
       }
     },
-    [handleAction, stateRef]
+    [resolveBoardHoldAction, startRepeat, stateRef, stopRepeat]
   );
 
   const handleTetrisPointerUp = useCallback(
     (event: ReactPointerEvent<HTMLCanvasElement>) => {
       const gesture = touchGestureRef.current;
       if (!gesture || gesture.pointerId !== event.pointerId) return;
+      if (gesture.holdTimerId) {
+        window.clearTimeout(gesture.holdTimerId);
+      }
+      if (gesture.repeatAction) {
+        stopRepeat(gesture.repeatAction);
+      }
       touchGestureRef.current = null;
       const current = stateRef.current;
       if (current.mode !== "tetris" || current.status !== "running") return;
@@ -646,11 +679,16 @@ export const App = () => {
       const elapsed = performance.now() - gesture.startedAt;
       const movedX = Math.abs(event.clientX - gesture.startX);
       const movedY = Math.abs(event.clientY - gesture.startY);
-      if (elapsed <= tapMaxDuration && movedX <= tapSlop && movedY <= tapSlop) {
+      if (
+        !gesture.repeatAction &&
+        elapsed <= tapMaxDuration &&
+        movedX <= tapSlop &&
+        movedY <= tapSlop
+      ) {
         handleAction("rotateCw");
       }
     },
-    [handleAction, stateRef]
+    [handleAction, stateRef, stopRepeat]
   );
 
   const handleDoomPointerDown = useCallback(

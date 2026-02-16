@@ -88,7 +88,7 @@ const EN_MESSAGES: Record<string, string> = {
   "menu.rotateDesc": "with Z / X or the on-screen rotate buttons.",
   "menu.touch": "Touch controls",
   "menu.touchDesc":
-    "let you drag left/right, swipe down to drop, and tap the board to rotate. You can toggle mobile controls in Settings.",
+    "let you touch and hold the board to move left, right, or down, and tap the board to rotate. You can toggle mobile controls in Settings.",
   "menu.hardDrop": "Hard drop",
   "menu.hardDropDesc": "with Space or the hard drop button.",
   "menu.hold": "Hold",
