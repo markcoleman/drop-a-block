@@ -10,8 +10,8 @@ export const ACTION_EFFECTS: Partial<Record<Action, ActionEffect>> = {
   left: { sound: playMove },
   right: { sound: playMove },
   down: { sound: playMove },
-  rotateCw: { sound: playRotate },
-  rotateCcw: { sound: playRotate },
+  rotateCw: { sound: playRotate, haptics: true },
+  rotateCcw: { sound: playRotate, haptics: true },
   hardDrop: { sound: playLock, haptics: true },
-  hold: { sound: playRotate }
+  hold: { sound: playRotate, haptics: true }
 };

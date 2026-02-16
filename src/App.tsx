@@ -385,9 +385,49 @@ export const App = () => {
     }
   }, [selectedMode, unlockedModes]);
 
-  const haptics = useCallback(() => {
-    if (navigator.vibrate) navigator.vibrate(10);
-  }, []);
+  const triggerHaptics = useCallback(
+    (pattern: number | number[] = 10) => {
+      if (!isTouchMode || typeof navigator.vibrate !== "function") return;
+      navigator.vibrate(pattern);
+    },
+    [isTouchMode]
+  );
+
+  const triggerActionHaptics = useCallback(
+    (action: Action) => {
+      if (!isTouchMode) return;
+      if (action === "hardDrop") {
+        triggerHaptics([12, 10, 20]);
+        return;
+      }
+      if (action === "rotateCw" || action === "rotateCcw" || action === "hold") {
+        triggerHaptics(8);
+      }
+    },
+    [isTouchMode, triggerHaptics]
+  );
+
+  const requestMobileImmersive = useCallback(async () => {
+    if (!isTouchMode || !isNarrowViewport) return;
+    const root = document.documentElement;
+    if (!document.fullscreenElement && typeof root.requestFullscreen === "function") {
+      try {
+        await root.requestFullscreen({ navigationUI: "hide" });
+      } catch {
+        // Ignore fullscreen request failures (not supported or blocked by browser policy).
+      }
+    }
+    const orientation = screen.orientation as ScreenOrientation & {
+      lock?: (orientation: "portrait" | "landscape") => Promise<void>;
+    };
+    if (typeof orientation.lock === "function") {
+      try {
+        await orientation.lock("portrait");
+      } catch {
+        // Ignore orientation lock failures.
+      }
+    }
+  }, [isNarrowViewport, isTouchMode]);
 
   const handleAction = useCallback(
     (action: Action) => {
@@ -419,9 +459,16 @@ export const App = () => {
       if (current.status !== "running") return;
       const effect = ACTION_EFFECTS[resolvedAction];
       if (effect?.sound) effect.sound();
-      if (effect?.haptics) haptics();
+      if (effect?.haptics) triggerActionHaptics(resolvedAction);
     },
-    [dispatch, haptics, palette, settings.holdEnabled, settings.reducedMotion, stateRef]
+    [
+      dispatch,
+      palette,
+      settings.holdEnabled,
+      settings.reducedMotion,
+      stateRef,
+      triggerActionHaptics
+    ]
   );
   const inputEnabled = menuView === "none" && !showScoreEntry && !showCheatEntry;
   const { startRepeat, stopRepeat, stopAll } = useInput({
@@ -496,12 +543,14 @@ export const App = () => {
 
   const handleLaunch = () => {
     if (!unlockedModes.has(selectedMode)) return;
+    void requestMobileImmersive();
     setMenuView("none");
     setStartStep("main");
     applyState(() => startGame(resetGame(selectedMode, activeModifiers)));
   };
 
   const handleRestart = () => {
+    void requestMobileImmersive();
     setMenuView("none");
     setShowScoreEntry(false);
     setStartStep("main");

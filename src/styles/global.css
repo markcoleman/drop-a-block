@@ -1639,6 +1639,9 @@ input[type="radio"] {
 }
 
 @media (max-width: 720px) {
+  :root {
+    --mobile-controls-height: 148px;
+  }
   .app {
     padding: 20px 12px;
     gap: 18px;
@@ -1663,13 +1666,13 @@ input[type="radio"] {
     justify-content: flex-end;
   }
   .app.mobile-controls-enabled {
-    padding: 20px 12px calc(170px + env(safe-area-inset-bottom));
+    padding: 20px 12px calc(var(--mobile-controls-height) + 22px + env(safe-area-inset-bottom));
   }
   .layout {
     gap: 18px;
   }
   .app.mobile-controls-enabled .layout {
-    padding-bottom: 160px;
+    padding-bottom: calc(var(--mobile-controls-height) + 12px);
   }
   .game-stage {
     grid-template-areas:
@@ -1734,7 +1737,9 @@ input[type="radio"] {
   .controls {
     position: fixed;
     inset: auto 0 0;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    min-height: var(--mobile-controls-height);
+    padding: 8px max(12px, env(safe-area-inset-left)) calc(10px + env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-right));
     background: linear-gradient(
       180deg,
       rgba(5, 8, 18, 0) 0%,
@@ -1745,9 +1750,9 @@ input[type="radio"] {
     z-index: 20;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .controls-row {
+    top: calc(10px + env(safe-area-inset-top));
+    right: max(10px, env(safe-area-inset-right));
+    padding: max(0px, env(safe-area-inset-top)) 0 0;
     display: contents;
   }
   .control-button {
@@ -1778,7 +1783,7 @@ input[type="radio"] {
     width: 100%;
     min-height: 100dvh;
     gap: 0;
-    padding: 0;
+    padding: 0 0 calc(var(--mobile-controls-height) + env(safe-area-inset-bottom));
   }
   .app.mobile-focus .game-panel {
     width: 100%;
@@ -1802,13 +1807,15 @@ input[type="radio"] {
     box-shadow: none;
     backdrop-filter: none;
     background: var(--board-bg);
+    display: grid;
+    place-items: center;
   }
   .app.mobile-focus .board-panel::before,
   .app.mobile-focus .board-panel::after {
     display: none;
   }
   .app.mobile-focus .game-canvas {
-    width: min(100vw, 50dvh);
+    width: min(100vw, calc((100dvh - var(--mobile-controls-height)) / 2));
     max-width: none;
     border-radius: 0;
     box-shadow: none;
@@ -1817,6 +1824,7 @@ input[type="radio"] {
     border-radius: 0;
   }
   .app.mobile-focus .controls {
+    min-height: calc(var(--mobile-controls-height) - 6px);
     padding-left: max(12px, env(safe-area-inset-left));
     padding-right: max(12px, env(safe-area-inset-right));
     background: linear-gradient(
