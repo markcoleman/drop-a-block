@@ -16,7 +16,7 @@
 
 <!-- generated:start -->
 
-- Source files (`src/**/*.{ts,tsx}`): 66
+- Source files (`src/**/*.{ts,tsx}`): 69
 - Test files (`src/**/*.test.{ts,tsx}`): 23
 - Docs files (`docs/**/*.md`): 21
 - Workflow files (`.github/workflows/*.{yml,yaml}`): 6
