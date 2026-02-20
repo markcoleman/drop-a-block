@@ -1,0 +1,12 @@
+{
+  "cli": {
+    "version": ">= 13.3.1"
+  },
+  "build": {
+    "production": {
+      "ios": {
+        "simulator": false
+      }
+    }
+  }
+}

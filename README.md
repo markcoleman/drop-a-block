@@ -28,6 +28,19 @@ npm run build
 npm run preview
 ```
 
+## Deployment Models
+
+### 1) Web deployment (GitHub Pages)
+
+The existing Vite app deploys to GitHub Pages with `.github/workflows/deploy.yml`.
+
+### 2) iOS deployment (React Native)
+
+A React Native (Expo) app lives in `native/` and runs the game directly in-app by reusing shared engine and action logic from this repository.
+
+- Validate native changes with `.github/workflows/native-ios-check.yml`.
+- Trigger iOS production builds from `.github/workflows/native-ios-build.yml` (requires `EXPO_TOKEN` secret).
+
 ## GitHub Pages Deployment
 
 1. Push to GitHub.
@@ -77,6 +90,7 @@ The secret menu lets you toggle fun modifiers and unlock modes for testing.
 - `src/game` — input mapping and reducer logic.
 - `src/components` — UI components.
 - `src/styles/global.css` — global styles and layout.
+- `native` — Expo React Native wrapper for iOS deployment.
 - `docs/codex` — agent guides and dev assets.
 - `docs/project` — versioned plan, progress, and tech-debt docs.
 - `docs/decisions` — in-repo architecture decision records (ADRs).
