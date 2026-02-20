@@ -1,0 +1,47 @@
+name: native-ios-check
+
+on:
+  pull_request:
+    paths:
+      - "native/**"
+      - ".github/workflows/native-ios-check.yml"
+  push:
+    branches: [main]
+    paths:
+      - "native/**"
+      - ".github/workflows/native-ios-check.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-ios-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-native-ios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: native
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Audit native production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Export iOS bundle artifacts
+        run: npm run export:ios

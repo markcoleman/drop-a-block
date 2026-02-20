@@ -26,3 +26,24 @@ jobs:
 
       - name: Run npm audit (high and critical)
         run: npm audit --audit-level=high
+
+  audit-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: native
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install native dependencies
+        run: npm install
+
+      - name: Run native npm audit (high and critical)
+        run: npm audit --omit=dev --audit-level=high
