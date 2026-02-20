@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "Drop-a-Block",
+    "slug": "drop-a-block",
+    "scheme": "dropablock",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.example.dropablock"
+    }
+  }
+}
