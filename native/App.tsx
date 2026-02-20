@@ -70,7 +70,7 @@ const GameButton = ({ label, onPress }: { label: string; onPress: () => void }) 
   </Pressable>
 );
 
-export default function App(): JSX.Element {
+export default function App() {
   const [state, setState] = useState<GameState>(() => resetGame());
   const stateRef = useRef(state);
   const { width } = useWindowDimensions();
